@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Ingreso administrativo | {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-7 col-lg-5">
+                <div class="card border-0 shadow-soft">
+                    <div class="card-body p-4 p-lg-5">
+                        <div class="text-center mb-4">
+                            <i class="bi bi-shield-lock fs-1 text-primary"></i>
+                            <h1 class="h3 fw-bold mt-2">Acceso administrativo</h1>
+                            <p class="text-secondary mb-0">Ingresa con tu usuario y contraseña para administrar la plataforma.</p>
+                        </div>
+                        <form method="post" class="d-grid gap-3">
+                            <div>
+                                <label class="form-label" for="adminUsername">Usuario</label>
+                                <input class="form-control" id="adminUsername" name="username" type="text" autocomplete="username" required>
+                            </div>
+                            <div>
+                                <label class="form-label" for="adminPassword">Contraseña</label>
+                                <div class="input-group">
+                                    <input class="form-control" id="adminPassword" name="password" type="password" autocomplete="current-password" required>
+                                    <button class="btn btn-outline-secondary" type="button" data-password-toggle="adminPassword" aria-label="Mostrar contraseña" title="Mostrar contraseña">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary rounded-pill py-2" type="submit">Ingresar al panel</button>
+                        </form>
+                        <div class="text-center mt-3">
+                            <a class="small link-secondary" href="{{ url_for('admin_bp.recuperar_password') }}">¿Olvidaste tu contraseña?</a>
+                        </div>
+                        <div class="admin-login-help mt-4">
+                            Usa las credenciales administrativas asignadas para entrar al panel. Despues del primer ingreso, puedes crear o actualizar usuarios desde la seccion de seguridad.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

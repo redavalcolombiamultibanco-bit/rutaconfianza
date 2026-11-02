@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ config.APP_NAME }}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('comercial_bp.home') }}">
+                <img
+                    class="brand-logo"
+                    src="{{ url_for('static', filename=config.BRAND_LOGO) }}"
+                    alt="{{ config.APP_NAME }}"
+                >
+            </a>
+            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('comercial_bp.home') }}">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('comercial_bp.home') }}#beneficios">Beneficios</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('comercial_bp.home') }}#servicios">Servicios</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('tracking_bp.ingreso') }}">Portal Padres</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('conductor_bp.ingresar') }}">APP Conductor</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('comercial_bp.home') }}#contacto">Contacto</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% block flash_messages %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="container mt-3">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endblock %}
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="site-footer py-5 mt-5">
+        <div class="container d-flex flex-column flex-lg-row justify-content-between gap-3">
+            <div>
+                <img
+                    class="footer-brand-logo mb-3"
+                    src="{{ url_for('static', filename=config.BRAND_LOGO) }}"
+                    alt="{{ config.APP_NAME }}"
+                >
+                <p class="mb-0 text-secondary">Control moderno de rutas escolares y empresariales con seguimiento en vivo, asistencia y comunicacion por ruta.</p>
+            </div>
+            <div class="text-lg-end site-footer__meta">
+                <small class="text-secondary">Disenado para computador, tablet y celular.</small>
+                <a class="footer-admin-link" href="{{ url_for('admin_bp.ingresar') }}">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>Panel administrativo</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+    {% if config.CONTACT_WHATSAPP and request.endpoint == 'comercial_bp.home' %}
+    <a
+        class="floating-help-button"
+        href="https://wa.me/57{{ config.CONTACT_WHATSAPP }}?text=Hola%2C%20necesito%20ayuda%20con%20Ruta%20Confianza."
+        target="_blank"
+        rel="noopener"
+        aria-label="Abrir ayuda por WhatsApp"
+    >
+        <span class="floating-help-button__badge">Ayuda</span>
+        <span class="floating-help-button__content">
+            <span class="floating-help-button__text">
+                <strong>Necesitas ayuda?</strong>
+                <small>Te respondemos por WhatsApp</small>
+            </span>
+            <span class="floating-help-button__icon">
+                <i class="bi bi-whatsapp"></i>
+            </span>
+        </span>
+    </a>
+    {% endif %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

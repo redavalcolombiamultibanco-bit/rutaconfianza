@@ -1,0 +1,176 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Estudiantes | Panel administrativo{% endblock %}
+{% block admin_eyebrow %}Operacion academica{% endblock %}
+{% block admin_title %}Estudiantes y paradas{% endblock %}
+{% block admin_content %}
+<p class="admin-section-intro">
+    Matricula estudiantes en una ruta, verifica su geolocalizacion y administra la informacion del acudiente.
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-mortarboard"></i></span>
+            <span class="metric-card__label">Total estudiantes</span>
+            <h2>{{ total_estudiantes }}</h2>
+            <p>Matriculados en el sistema</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-geo-alt"></i></span>
+            <span class="metric-card__label">Sin geolocalizar</span>
+            <h2>{{ sin_geolocalizar }}</h2>
+            <p>Direcciones por corregir</p>
+        </div>
+    </div>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-person-plus me-2"></i>Matricular estudiante</h2>
+            <p>Vincula al estudiante con su ruta y con la informacion del acudiente.</p>
+        </div>
+    </div>
+    <form method="post" action="{{ url_for('admin_bp.crear_estudiante') }}" class="row g-3 js-school-form">
+        <div class="col-md-6">
+            <select class="form-select" name="ruta_id" required>
+                <option value="">Selecciona una ruta</option>
+                {% for ruta in rutas %}
+                <option value="{{ ruta.id }}" {% if ruta_seleccionada and ruta.id == ruta_seleccionada.id %}selected{% endif %}>{{ ruta.nombre }} · PIN {{ ruta.pin_acceso }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3"><input class="form-control" name="nombres" placeholder="Nombres" required></div>
+        <div class="col-md-3"><input class="form-control" name="apellidos" placeholder="Apellidos" required></div>
+        <div class="col-md-3"><input class="form-control" name="documento" placeholder="Documento"></div>
+        <div class="col-md-3"><input class="form-control" name="grado" placeholder="Grado"></div>
+        <div class="col-md-3"><input class="form-control" type="number" min="1" name="orden_parada" placeholder="Orden parada"></div>
+        <div class="col-md-3"><input class="form-control js-city-input" name="ciudad" placeholder="Ciudad" list="municipiosCatalogo"></div>
+        <div class="col-md-6"><input class="form-control js-school-input" name="institucion" placeholder="Institucion educativa" list="colegiosCatalogo"></div>
+        <div class="col-md-6"><input class="form-control" name="direccion" placeholder="Direccion de recogida"></div>
+        <div class="col-md-4"><input class="form-control" name="barrio" placeholder="Barrio"></div>
+        <div class="col-md-8"><input class="form-control" name="referencia_direccion" placeholder="Referencia de la direccion"></div>
+        <div class="col-md-4"><input class="form-control" name="acudiente_nombre" placeholder="Nombre del acudiente" required></div>
+        <div class="col-md-4"><input class="form-control" name="acudiente_telefono" placeholder="Telefono del acudiente" required></div>
+        <div class="col-md-4"><input class="form-control" type="email" name="acudiente_email" placeholder="Correo del acudiente"></div>
+        <div class="col-md-6">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="true" name="activo" id="estudianteActivo" checked>
+                <label class="form-check-label" for="estudianteActivo">Estudiante activo</label>
+            </div>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <button class="btn btn-primary rounded-pill px-4" type="submit">Guardar estudiante</button>
+        </div>
+    </form>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-mortarboard me-2"></i>Estudiantes por ruta</h2>
+            <p>Selecciona una ruta para revisar o editar sus paradas.</p>
+        </div>
+        <span class="small text-secondary">{{ estudiantes_ruta|length }} en la ruta seleccionada</span>
+    </div>
+    {% if rutas %}
+    <form method="get" class="row g-2 align-items-center mb-3">
+        <div class="col-md-8">
+            <select class="form-select" name="ruta_id" onchange="this.form.submit()">
+                {% for ruta in rutas %}
+                <option value="{{ ruta.id }}" {% if ruta_seleccionada and ruta.id == ruta_seleccionada.id %}selected{% endif %}>{{ ruta.nombre }} · {{ ruta.codigo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a class="btn btn-outline-primary rounded-pill w-100" href="{{ url_for('admin_bp.rutas') }}">Gestionar rutas</a>
+        </div>
+    </form>
+    <div class="d-grid gap-3">
+        {% for estudiante in estudiantes_ruta %}
+        <div class="attendance-item">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                <div>
+                    <strong>{{ estudiante.nombre_completo }}</strong>
+                    <div class="small text-secondary">{{ estudiante.grado or "Sin grado" }} · {{ estudiante.institucion or "Sin institucion" }}</div>
+                    <div class="small text-secondary">{{ estudiante.documento or "Documento pendiente" }} · {{ estudiante.acudiente_nombre }} · {{ estudiante.acudiente_telefono }}</div>
+                    <div class="small text-secondary">Parada {{ estudiante.orden_parada or "-" }} · {{ estudiante.direccion or "Direccion pendiente" }}{% if estudiante.barrio %} · {{ estudiante.barrio }}{% endif %}</div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-start">
+                    <span class="status-pill {% if estudiante.latitud is not none and estudiante.longitud is not none %}status-pill--ok{% else %}status-pill--warn{% endif %}">
+                        {% if estudiante.latitud is not none and estudiante.longitud is not none %}Ubicado{% else %}Sin ubicar{% endif %}
+                    </span>
+                    <span class="status-pill {% if estudiante.activo %}status-pill--ok{% else %}status-pill--off{% endif %}">
+                        {{ "Activo" if estudiante.activo else "Inactivo" }}
+                    </span>
+                </div>
+            </div>
+            <details class="mt-3">
+                <summary class="small fw-semibold text-primary" style="cursor: pointer;">Editar estudiante</summary>
+                <form method="post" action="{{ url_for('admin_bp.actualizar_estudiante', estudiante_id=estudiante.id) }}" class="row g-3 mt-2 js-school-form">
+                    <div class="col-md-4"><input class="form-control" name="nombres" value="{{ estudiante.nombres }}" placeholder="Nombres" required></div>
+                    <div class="col-md-4"><input class="form-control" name="apellidos" value="{{ estudiante.apellidos }}" placeholder="Apellidos" required></div>
+                    <div class="col-md-4">
+                        <select class="form-select" name="ruta_id" required>
+                            {% for ruta in rutas %}
+                            <option value="{{ ruta.id }}" {% if ruta.id == estudiante.ruta_id %}selected{% endif %}>{{ ruta.nombre }} · {{ ruta.codigo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3"><input class="form-control" name="documento" value="{{ estudiante.documento or '' }}" placeholder="Documento"></div>
+                    <div class="col-md-3"><input class="form-control" name="grado" value="{{ estudiante.grado or '' }}" placeholder="Grado"></div>
+                    <div class="col-md-3"><input class="form-control" type="number" min="1" name="orden_parada" value="{{ estudiante.orden_parada or '' }}" placeholder="Orden"></div>
+                    <div class="col-md-3"><input class="form-control js-city-input" name="ciudad" value="{{ estudiante.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                    <div class="col-12"><input class="form-control js-school-input" name="institucion" value="{{ estudiante.institucion or '' }}" placeholder="Institucion" list="colegiosCatalogo"></div>
+                    <div class="col-12"><input class="form-control" name="direccion" value="{{ estudiante.direccion or '' }}" placeholder="Direccion"></div>
+                    <div class="col-md-6"><input class="form-control" name="barrio" value="{{ estudiante.barrio or '' }}" placeholder="Barrio"></div>
+                    <div class="col-md-6"><input class="form-control" name="referencia_direccion" value="{{ estudiante.referencia_direccion or '' }}" placeholder="Referencia"></div>
+                    <div class="col-md-4"><input class="form-control" name="acudiente_nombre" value="{{ estudiante.acudiente_nombre }}" placeholder="Acudiente" required></div>
+                    <div class="col-md-4"><input class="form-control" name="acudiente_telefono" value="{{ estudiante.acudiente_telefono }}" placeholder="Telefono" required></div>
+                    <div class="col-md-4"><input class="form-control" type="email" name="acudiente_email" value="{{ estudiante.acudiente_email or '' }}" placeholder="Correo"></div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="true" name="activo" id="estudianteActivo{{ estudiante.id }}" {% if estudiante.activo %}checked{% endif %}>
+                            <label class="form-check-label" for="estudianteActivo{{ estudiante.id }}">Estudiante activo</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end d-flex justify-content-md-end gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-danger rounded-pill px-4" type="submit" formaction="{{ url_for('admin_bp.eliminar_estudiante', estudiante_id=estudiante.id) }}" formnovalidate onclick="return confirm('¿Deseas eliminar este estudiante de la ruta?');">Eliminar</button>
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-4" type="submit">Guardar estudiante</button>
+                    </div>
+                </form>
+            </details>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3 class="h6">Sin estudiantes en esta ruta</h3>
+            <p class="text-secondary mb-0">Matricula estudiantes para habilitar asistencia y seguimiento familiar.</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <h3 class="h6">Todavia no hay rutas creadas</h3>
+        <p class="text-secondary mb-0">Primero registra al menos una ruta para asociar estudiantes.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<datalist id="municipiosCatalogo">
+    {% for municipio in municipios_catalogo %}
+    <option value="{{ municipio }}"></option>
+    {% endfor %}
+</datalist>
+<datalist id="colegiosCatalogo">
+    {% for municipio, colegios in colegios_catalogo.items() %}
+        {% for colegio in colegios %}
+    <option value="{{ colegio }}" data-city="{{ municipio }}"></option>
+        {% endfor %}
+    {% endfor %}
+</datalist>
+<script id="schoolCatalogData" type="application/json">{{ colegios_catalogo|tojson }}</script>
+{% endblock %}

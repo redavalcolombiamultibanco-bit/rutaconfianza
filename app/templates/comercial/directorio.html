@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Directorio | {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="mb-4">
+            <h1 class="fw-bold">Directorio de conductores</h1>
+            <p class="text-secondary mb-0">Espacio comercial para mostrar rutas disponibles, vehiculos y datos de contacto.</p>
+        </div>
+        <div class="row g-4">
+            {% for conductor in conductores %}
+            <div class="col-md-6 col-xl-4">
+                <div class="card h-100 border-0 shadow-soft">
+                    {% if conductor.foto_publica_url %}
+                    <img class="card-img-top directory-bus-photo" src="{{ conductor.foto_publica_url }}" alt="Buseta de {{ conductor.nombre_completo }}">
+                    {% endif %}
+                    <div class="card-body">
+                        <h2 class="h5">{{ conductor.nombre_completo }}</h2>
+                        <p class="text-secondary">{{ conductor.nombre_vehiculo }} · {{ conductor.placa_vehiculo }}</p>
+                        <div class="small text-secondary d-grid gap-2">
+                            <div>Capacidad: {{ conductor.capacidad_vehiculo or "No definida" }}</div>
+                            <div>Ciudad: {{ conductor.ciudad or "No definida" }}</div>
+                            <div>Telefono: {{ conductor.telefono }}</div>
+                            <div>Correo: {{ conductor.email }}</div>
+                        </div>
+                        {% if conductor.descripcion_publica %}
+                        <hr>
+                        <p class="small mb-0">{{ conductor.descripcion_publica }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12">
+                <div class="empty-state">
+                    <h3 class="h5">Todavia no hay perfiles publicados</h3>
+                    <p class="text-secondary mb-0">Activa `visible_en_directorio` en un conductor para que aparezca aqui.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

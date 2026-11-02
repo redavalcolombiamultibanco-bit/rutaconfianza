@@ -1,0 +1,45 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Reportes | Panel administrativo{% endblock %}
+{% block admin_eyebrow %}Analisis de datos{% endblock %}
+{% block admin_title %}Reportes descargables{% endblock %}
+{% block admin_content %}
+<p class="admin-section-intro">
+    Descarga la informacion de la plataforma en formato Excel/CSV o PDF. Los reportes de asistencia permiten filtrar por rango de fechas.
+</p>
+
+<div class="row g-3">
+    {% for clave, reporte in reportes.items() %}
+    <div class="col-md-6 col-xl-4">
+        <div class="report-card h-100">
+            <span class="report-card__icon"><i class="bi {{ reporte.icono }}"></i></span>
+            <div>
+                <h3>{{ reporte.titulo }}</h3>
+                <p>{{ reporte.descripcion }}</p>
+            </div>
+            <form method="get" action="{{ url_for('admin_bp.descargar_reporte', nombre=clave) }}" class="d-grid gap-2" data-report-form>
+                {% if reporte.filtra_fechas %}
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small text-secondary mb-1">Desde</label>
+                        <input class="form-control form-control-sm" type="date" name="desde" max="{{ hoy.isoformat() }}">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-secondary mb-1">Hasta</label>
+                        <input class="form-control form-control-sm" type="date" name="hasta" max="{{ hoy.isoformat() }}">
+                    </div>
+                </div>
+                {% endif %}
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary rounded-pill flex-fill" type="submit" name="formato" value="csv">
+                        <i class="bi bi-filetype-csv me-1"></i>CSV
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill flex-fill" type="submit" name="formato" value="pdf">
+                        <i class="bi bi-filetype-pdf me-1"></i>PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

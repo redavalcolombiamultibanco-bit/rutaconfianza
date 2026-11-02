@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Ingreso de conductor | {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-7 col-lg-5">
+                <div class="card border-0 shadow-soft">
+                    <div class="card-body p-4 p-lg-5">
+                        <div class="text-center mb-4">
+                            <i class="bi bi-person-lock fs-1 text-primary"></i>
+                            <h1 class="h3 fw-bold mt-2">Acceso de conductor</h1>
+                            <p class="text-secondary mb-0">Ingresa con las credenciales que te asignó el administrador.</p>
+                        </div>
+                        <form method="post" class="d-grid gap-3">
+                            <div>
+                                <label class="form-label" for="driverEmail">Correo electrónico</label>
+                                <input class="form-control" id="driverEmail" name="email" type="email" autocomplete="username" required>
+                            </div>
+                            <div>
+                                <label class="form-label" for="driverPassword">Contraseña</label>
+                                <div class="input-group">
+                                    <input class="form-control" id="driverPassword" name="password" type="password" autocomplete="current-password" required>
+                                    <button class="btn btn-outline-secondary" type="button" data-password-toggle="driverPassword" aria-label="Mostrar contraseña" title="Mostrar contraseña">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary rounded-pill py-2" type="submit">Ingresar a mi ruta</button>
+                        </form>
+                        <div class="text-center mt-3">
+                            <a class="small link-secondary" href="{{ url_for('conductor_bp.recuperar_password') }}">¿Olvidaste tu contraseña?</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

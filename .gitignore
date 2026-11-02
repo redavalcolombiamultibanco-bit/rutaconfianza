@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+respaldos/
+*.log
+.gunicorn.pid
+
+# El archivo ruta_exacta.db si se sube al repositorio: asi cada despliegue de
+# prueba arranca con los datos que ya tienes en local.
+
+# Si subes el repositorio desde la carpeta padre (proyecto ruta escolar),
+# estas reglas evitan cargar el entorno virtual de Python.
+rutasescolares/Scripts/
+rutasescolares/Lib/
+rutasescolares/Include/
+rutasescolares/pyvenv.cfg

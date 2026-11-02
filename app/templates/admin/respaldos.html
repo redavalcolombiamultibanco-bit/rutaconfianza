@@ -1,0 +1,139 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Respaldos | Panel administrativo{% endblock %}
+{% block admin_eyebrow %}Continuidad del servicio{% endblock %}
+{% block admin_title %}Copias de seguridad{% endblock %}
+{% block admin_content %}
+<p class="admin-section-intro">
+    Crea copias de seguridad completas (base de datos y fotos), descargalas, y restaura la informacion cuando lo necesites.
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-archive"></i></span>
+            <span class="metric-card__label">Respaldos disponibles</span>
+            <h2>{{ respaldos|length }}</h2>
+            <p>Archivos almacenados en el servidor</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-hdd-stack"></i></span>
+            <span class="metric-card__label">Contenido</span>
+            <h2>DB + fotos</h2>
+            <p>Base de datos y archivos subidos</p>
+        </div>
+    </div>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-plus-circle me-2"></i>Crear copia de seguridad</h2>
+            <p>Genera un archivo .zip con la base de datos y las fotos actuales.</p>
+        </div>
+    </div>
+    <form method="post" action="{{ url_for('admin_bp.crear_respaldo_admin') }}" class="row g-3 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label small text-secondary">Motivo o etiqueta (opcional)</label>
+            <input class="form-control" name="motivo" placeholder="Ej: cierre de mes, antes de actualizar">
+        </div>
+        <div class="col-md-6 text-md-end">
+            <button class="btn btn-primary rounded-pill px-4" type="submit">
+                <i class="bi bi-hdd-stack me-1"></i>Crear respaldo ahora
+            </button>
+        </div>
+    </form>
+    <p class="small text-secondary mb-0 mt-3">Carpeta de respaldos: <code>{{ carpeta }}</code></p>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-archive me-2"></i>Restaurar copia de seguridad</h2>
+            <p>Reemplaza la informacion actual por la de un respaldo existente o por un archivo .zip que subas.</p>
+        </div>
+    </div>
+    <div class="alert alert-warning small" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Al restaurar se reemplazan la base de datos y las fotos actuales. El sistema guarda automaticamente un respaldo previo antes de restaurar.
+    </div>
+    {% if respaldos %}
+    <form method="post" action="{{ url_for('admin_bp.restaurar_respaldo_admin') }}" class="row g-3 align-items-end mb-4"
+          onsubmit="return confirm('¿Confirmas restaurar este respaldo? La informacion actual sera reemplazada.');">
+        <div class="col-md-8">
+            <label class="form-label small text-secondary">Respaldo existente</label>
+            <select class="form-select" name="nombre" required>
+                <option value="">Selecciona un respaldo</option>
+                {% for respaldo in respaldos %}
+                <option value="{{ respaldo.nombre }}">{{ respaldo.nombre }} · {{ respaldo.tamano }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <button class="btn btn-outline-danger rounded-pill w-100" type="submit">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Restaurar seleccionado
+            </button>
+        </div>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin_bp.restaurar_respaldo_admin') }}" enctype="multipart/form-data"
+          class="row g-3 align-items-end" onsubmit="return confirm('¿Confirmas restaurar el archivo subido? La informacion actual sera reemplazada.');">
+        <div class="col-md-8">
+            <label class="form-label small text-secondary">O sube un archivo de respaldo (.zip)</label>
+            <input class="form-control" type="file" name="archivo" accept=".zip,application/zip">
+        </div>
+        <div class="col-md-4 text-md-end">
+            <button class="btn btn-outline-danger rounded-pill w-100" type="submit">
+                <i class="bi bi-upload me-1"></i>Restaurar archivo
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-clock-history me-2"></i>Historial de respaldos</h2>
+            <p>Respaldos almacenados, del mas reciente al mas antiguo.</p>
+        </div>
+    </div>
+    <div class="d-grid gap-3">
+        {% for respaldo in respaldos %}
+        <div class="backup-item">
+            <span class="backup-item__icon"><i class="bi bi-file-earmark-zip"></i></span>
+            <div class="backup-item__info">
+                <strong>{{ respaldo.nombre }}</strong>
+                <div class="small text-secondary">
+                    {{ respaldo.fecha.strftime("%Y-%m-%d %H:%M") }} · {{ respaldo.tamano }}
+                    {% if respaldo.manifiesto and respaldo.manifiesto.motivo %} · {{ respaldo.manifiesto.motivo }}{% endif %}
+                </div>
+                {% if respaldo.manifiesto and respaldo.manifiesto.conteos %}
+                <div class="small text-secondary">
+                    {% for etiqueta, valor in respaldo.manifiesto.conteos.items() %}
+                    <span class="me-2">{{ etiqueta|replace('_', ' ') }}: {{ valor }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="backup-item__actions">
+                <a class="btn btn-sm btn-outline-primary rounded-pill px-3" href="{{ url_for('admin_bp.descargar_respaldo', nombre=respaldo.nombre) }}">
+                    <i class="bi bi-download me-1"></i>Descargar
+                </a>
+                <form method="post" action="{{ url_for('admin_bp.eliminar_respaldo_admin', nombre=respaldo.nombre) }}"
+                      onsubmit="return confirm('¿Eliminar este respaldo? Esta accion no se puede deshacer.');">
+                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3" type="submit">
+                        <i class="bi bi-trash me-1"></i>Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3 class="h6">Todavia no hay respaldos</h3>
+            <p class="text-secondary mb-0">Crea la primera copia de seguridad para proteger tu informacion.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

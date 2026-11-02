@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Portal de Padres | {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<section class="py-5 min-vh-75 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-soft">
+                    <div class="card-body p-4 p-lg-5">
+                        <span class="badge rounded-pill text-bg-primary mb-3">Acceso con PIN</span>
+                        <h1 class="h3 fw-bold mb-3">Consulta la ruta de tu hijo en tiempo real</h1>
+                        <p class="text-secondary">Ingresa el PIN asignado por la empresa o por el conductor para entrar al mapa, ver el estado del recorrido y participar en el chat grupal.</p>
+                        <form method="post" class="d-grid gap-3 mt-4">
+                            <input class="form-control form-control-lg text-center tracking-pin-input" name="pin" placeholder="Escribe el PIN" maxlength="10" required>
+                            <button class="btn btn-primary btn-lg rounded-pill" type="submit">Ingresar al seguimiento</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

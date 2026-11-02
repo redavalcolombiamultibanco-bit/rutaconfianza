@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+{% block title %}Panel del conductor | {{ config.APP_NAME }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Pantalla de operación: una versión funcional de la identidad limpia de GeoRuta. */
+    :root {
+        --driver-ink: #0d1b24;
+        --driver-ink-soft: #1a3542;
+        --driver-paper: #f2f5f4;
+        --driver-card: #ffffff;
+        --driver-line: #e4eae8;
+        --driver-muted: #6d7a80;
+        --driver-accent: #f6c945;
+        --driver-accent-deep: #e9b82c;
+        --driver-green: #18815b;
+        --driver-red: #c93e3e;
+        --driver-radius: 18px;
+        --driver-radius-sm: 12px;
+        --driver-shadow-sm: 0 4px 16px rgba(16, 33, 43, .05);
+        --driver-shadow: 0 20px 48px rgba(16, 33, 43, .11);
+        --driver-ease: cubic-bezier(.22, .61, .36, 1);
+    }
+
+    body { -webkit-font-smoothing: antialiased; background: var(--driver-paper) !important; color: var(--driver-ink) !important; }
+    body > .navbar, body > .site-footer { display: none; }
+    body > main { min-height: 100vh; }
+
+    .driver-app { min-height: 100vh; padding-bottom: 2.5rem; }
+    .driver-topbar { background: linear-gradient(115deg, #0b1a23 0%, #16323f 58%, #1b3d4c 100%); color: #fff; position: sticky; top: 0; z-index: 1030; box-shadow: 0 10px 30px rgba(8, 19, 26, .26); }
+    .driver-topbar-inner { min-height: 74px; }
+    .driver-brand { color: #fff; font-size: 1.1rem; font-weight: 800; letter-spacing: .075em; text-decoration: none; }
+    .driver-brand:hover { color: #fff; }
+    .driver-brand-logo { align-items: center; background: #ffffff; border-radius: 9px; box-shadow: 0 5px 14px rgba(0,0,0,.26); display: inline-flex; height: 38px; justify-content: center; padding: 3px 8px; }
+    .driver-brand-logo img { height: 100%; object-fit: contain; width: auto; }
+    .driver-workspace-label { color: rgba(255,255,255,.56); font-size: .69rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+
+    /* Encabezado funcional: reemplaza el bloque de presentacion por controles de operacion. */
+    .driver-control { background: linear-gradient(180deg, #16323f 0%, #10242e 100%); color: #fff; overflow: hidden; padding: 1.35rem 0 3rem; position: relative; }
+    .driver-control::after { background: radial-gradient(circle at 82% -40%, rgba(246,201,69,.16), transparent 62%); content: ""; inset: 0; pointer-events: none; position: absolute; }
+    .driver-control-bar { align-items: flex-end; display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; justify-content: space-between; position: relative; z-index: 1; }
+    .driver-control-route { flex: 1 1 280px; max-width: 360px; position: relative; }
+    .driver-control-route label { color: rgba(255,255,255,.58); display: block; font-size: .67rem; font-weight: 800; letter-spacing: .12em; margin-bottom: .42rem; text-transform: uppercase; }
+    .driver-control-meta { align-items: center; display: flex; flex-wrap: wrap; gap: .7rem; justify-content: flex-end; }
+    .driver-control-driver { align-items: center; display: flex; gap: .6rem; min-width: 0; padding-right: .3rem; }
+    .driver-control-avatar { align-items: center; background: rgba(246,201,69,.14); border: 1px solid rgba(246,201,69,.34); border-radius: 50%; color: var(--driver-accent); display: inline-flex; flex-shrink: 0; font-size: .95rem; height: 40px; justify-content: center; width: 40px; }
+    .driver-control-driver strong { display: block; font-size: .84rem; font-weight: 800; line-height: 1.2; }
+    .driver-control-driver span span { color: rgba(255,255,255,.58); display: block; font-size: .69rem; }
+    .driver-control-status { align-items: center; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); border-radius: 999px; display: inline-flex; gap: .45rem; padding: .5rem .8rem; }
+    .driver-control-status span:last-child { font-size: .68rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    .driver-control-status .driver-live-dot { background: var(--driver-accent-deep); box-shadow: 0 0 0 4px rgba(233,184,44,.16); }
+    .driver-control-status.is-live .driver-live-dot { animation: driver-pulse 1.9s ease-out infinite; background: var(--driver-green); box-shadow: 0 0 0 4px rgba(24,129,91,.2); }
+    .driver-select { appearance: none; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.22); border-radius: var(--driver-radius-sm); color: #fff; font-size: .88rem; font-weight: 700; padding: .76rem 2.3rem .76rem .9rem; transition: border-color .2s var(--driver-ease), box-shadow .2s var(--driver-ease), background .2s var(--driver-ease); width: 100%; }
+    .driver-select:hover { background: rgba(255,255,255,.15); }
+    .driver-select:focus { border-color: var(--driver-accent); box-shadow: 0 0 0 .2rem rgba(246,201,69,.18); outline: none; }
+    .driver-select option { background: var(--driver-ink); color: #fff; }
+    .select-chevron { color: var(--driver-accent); pointer-events: none; position: absolute; right: .85rem; bottom: .82rem; }
+    .driver-parent-link { align-items: center; border: 1px solid rgba(255,255,255,.32); border-radius: var(--driver-radius-sm); color: #fff; display: inline-flex; font-size: .76rem; font-weight: 700; justify-content: center; min-height: 46px; padding: .68rem 1rem; text-align: center; text-decoration: none; transition: background .2s var(--driver-ease), color .2s var(--driver-ease), border-color .2s var(--driver-ease), transform .2s var(--driver-ease); white-space: nowrap; }
+    .driver-parent-link:hover { background: #fff; border-color: #fff; color: var(--driver-ink); transform: translateY(-1px); }
+
+    .driver-main { margin-top: -2.1rem; position: relative; z-index: 2; }
+    .driver-main--with-flash { margin-top: -1rem; }
+    .driver-card { animation: driver-rise .55s var(--driver-ease) both; background: var(--driver-card); border: 1px solid var(--driver-line); border-radius: var(--driver-radius); box-shadow: var(--driver-shadow-sm); transition: border-color .32s var(--driver-ease), box-shadow .32s var(--driver-ease); }
+    .driver-card:hover { border-color: #d7e2de; box-shadow: var(--driver-shadow); }
+    .driver-map-card { animation: none; }
+    .driver-card-label { color: var(--driver-muted); font-size: .69rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .driver-section-title { color: var(--driver-ink); font-size: 1.08rem; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+
+    .driver-status-card { overflow: hidden; }
+    .driver-status-heading { background: linear-gradient(180deg, #fffdf6 0%, #fdf7e7 100%); border-bottom: 1px solid #f1e9ce; padding: 1rem 1.15rem; }
+    .driver-live-state { align-items: center; color: var(--driver-green); display: flex; font-size: .7rem; font-weight: 800; gap: .42rem; letter-spacing: .08em; text-transform: uppercase; transition: color .3s var(--driver-ease); }
+    .driver-live-state.is-idle { color: #8a6e24; }
+    .driver-live-dot { background: var(--driver-green); border-radius: 50%; box-shadow: 0 0 0 4px rgba(24,129,91,.12); height: 8px; transition: background .3s var(--driver-ease); width: 8px; }
+    .driver-live-state.is-live .driver-live-dot { animation: driver-pulse 1.9s ease-out infinite; }
+    .driver-live-state.is-idle .driver-live-dot { background: var(--driver-accent-deep); box-shadow: 0 0 0 4px rgba(233,184,44,.15); }
+    .driver-status-body { padding: 1.15rem; }
+    .driver-primary-action { background: linear-gradient(135deg, var(--driver-accent) 0%, var(--driver-accent-deep) 100%); border: 0; border-radius: var(--driver-radius-sm); box-shadow: 0 10px 22px rgba(233,184,44,.26); color: var(--driver-ink); font-size: .79rem; font-weight: 800; letter-spacing: .04em; padding: .88rem 1rem; text-transform: uppercase; transition: box-shadow .2s var(--driver-ease), filter .2s var(--driver-ease), transform .2s var(--driver-ease); width: 100%; }
+    .driver-primary-action:hover { box-shadow: 0 14px 28px rgba(233,184,44,.34); filter: saturate(1.06); transform: translateY(-2px); }
+    .driver-primary-action:active { box-shadow: 0 6px 14px rgba(233,184,44,.22); transform: translateY(0) scale(.99); }
+    .driver-stop-action { background: #fff; border: 1px solid #eccdcd; border-radius: var(--driver-radius-sm); color: var(--driver-red); font-size: .76rem; font-weight: 800; padding: .76rem 1rem; text-transform: uppercase; transition: background .2s var(--driver-ease), border-color .2s var(--driver-ease), transform .2s var(--driver-ease); width: 100%; }
+    .driver-stop-action:hover { background: #fff4f4; border-color: var(--driver-red); color: #aa2828; transform: translateY(-1px); }
+    .driver-stop-action:active { transform: none; }
+    .driver-metrics { border-top: 1px solid var(--driver-line); margin: 1.15rem 0 0; padding: .3rem 0 0; }
+    .driver-metric { align-items: center; display: flex; gap: .8rem; padding: .78rem 0; transition: transform .22s var(--driver-ease); }
+    .driver-metric:hover { transform: translateX(3px); }
+    .driver-metric + .driver-metric { border-top: 1px solid #f0f2f1; }
+    .driver-metric-icon { align-items: center; background: linear-gradient(135deg, #eef4f2 0%, #e2ece8 100%); border-radius: 11px; color: var(--driver-ink-soft); display: flex; flex-shrink: 0; font-size: .92rem; height: 36px; justify-content: center; width: 36px; }
+    .driver-metric-copy { min-width: 0; }
+    .driver-metric-copy span { color: var(--driver-muted); display: block; font-size: .67rem; line-height: 1.1; }
+    .driver-metric-copy strong { color: var(--driver-ink); display: block; font-size: .78rem; font-weight: 700; margin-top: .2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .driver-notice { background: #f5f8f7; border-left: 3px solid var(--driver-accent); color: #54636a; font-size: .74rem; line-height: 1.4; margin: 1.15rem 0 0; padding: .7rem .75rem; }
+    .driver-gps-status { align-items: center; border-radius: 20px; display: inline-flex; font-size: .65rem; font-weight: 800; gap: .4rem; letter-spacing: .04em; padding: .38rem .58rem; text-transform: uppercase; }
+    .driver-gps-status.is-ready { background: #eef3f1; color: #577068; }
+    .driver-gps-status.is-active { background: #e8f7ef; color: var(--driver-green); }
+    .driver-gps-status.is-warning { background: #fff7e5; color: #98690e; }
+    .driver-gps-status.is-error { background: #fff0f0; color: #ad3434; }
+    .driver-bus-card { border: 1px solid var(--driver-line); margin: 0 0 1rem; overflow: hidden; position: relative; }
+    .driver-bus-image { display: block; height: 158px; object-fit: cover; object-position: center 50%; width: 100%; }
+    .driver-bus-caption { align-items: end; background: linear-gradient(0deg, rgba(7,22,30,.92), rgba(7,22,30,.03)); bottom: 0; color: #fff; display: flex; justify-content: space-between; left: 0; padding: 2.2rem .85rem .72rem; position: absolute; right: 0; }
+    .driver-bus-caption span { display: block; font-size: .63rem; font-weight: 700; letter-spacing: .12em; opacity: .72; text-transform: uppercase; }
+    .driver-bus-caption strong { display: block; font-size: .86rem; margin-top: .14rem; }
+    .driver-bus-plate { border: 1px solid rgba(255,255,255,.62); font-size: .7rem; font-weight: 800; letter-spacing: .08em; padding: .34rem .45rem; }
+
+    .driver-map-card { border-radius: 10px; height: 100%; min-height: 450px; overflow: hidden; position: relative; }
+    .driver-map { height: 100%; min-height: 450px; width: 100%; }
+    .driver-map-overlay { left: 1rem; pointer-events: none; position: absolute; top: 1rem; z-index: 450; }
+    .driver-map-pill { align-items: center; background: rgba(16,33,43,.92); box-shadow: 0 5px 16px rgba(0,0,0,.16); color: #fff; display: inline-flex; font-size: .69rem; font-weight: 800; gap: .48rem; letter-spacing: .08em; padding: .57rem .7rem; text-transform: uppercase; }
+    .driver-map-pill i { color: var(--driver-accent); }
+    .driver-map-caption { background: rgba(255,255,255,.94); bottom: 1rem; color: var(--driver-ink); font-size: .72rem; left: 1rem; padding: .66rem .8rem; position: absolute; z-index: 450; }
+    .driver-map-caption span { color: var(--driver-muted); display: block; font-size: .64rem; margin-top: .1rem; }
+
+    /* Modo ampliado: mapa a pantalla completa con guia tipo Android Auto. */
+    .driver-map-stage { position: relative; }
+    .driver-map-hud { display: none; inset: 0; pointer-events: none; position: absolute; z-index: 1200; }
+    .driver-map-card.is-expanded .driver-map-hud { display: block; }
+    .driver-hud-next { align-items: center; background: rgba(16,33,43,.95); border-radius: 14px; box-shadow: 0 14px 34px rgba(0,0,0,.34); color: #fff; display: flex; flex-wrap: wrap; gap: .3rem .85rem; left: 1rem; padding: .85rem 1.1rem; pointer-events: auto; position: absolute; right: 1rem; top: 1rem; }
+    .driver-hud-next-label { color: var(--driver-accent); font-size: .65rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; width: 100%; }
+    .driver-hud-next strong { font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
+    .driver-hud-next-meta { background: rgba(246,201,69,.16); border-radius: 999px; color: var(--driver-accent); font-size: .74rem; font-weight: 800; margin-left: auto; padding: .32rem .72rem; white-space: nowrap; }
+    .driver-hud-stops { background: rgba(16,33,43,.94); border-radius: 14px; bottom: 1rem; box-shadow: 0 14px 34px rgba(0,0,0,.34); color: #fff; display: flex; flex-direction: column; left: 1rem; max-height: min(48vh, 400px); padding: .9rem 1rem; pointer-events: auto; position: absolute; width: min(310px, 74vw); }
+    .driver-hud-stops-head { align-items: center; color: var(--driver-accent); display: flex; font-size: .67rem; font-weight: 800; letter-spacing: .1em; margin-bottom: .6rem; text-transform: uppercase; }
+    .driver-hud-stops-list { list-style: none; margin: 0; overflow-y: auto; padding: 0; }
+    .driver-hud-stop { align-items: center; border-bottom: 1px solid rgba(255,255,255,.09); display: flex; gap: .62rem; padding: .52rem 0; }
+    .driver-hud-stop:last-child { border-bottom: 0; }
+    .driver-hud-stop-index { align-items: center; background: rgba(255,255,255,.13); border-radius: 999px; color: #fff; display: inline-flex; flex-shrink: 0; font-size: .68rem; font-weight: 800; height: 25px; justify-content: center; width: 25px; }
+    .driver-hud-stop--next .driver-hud-stop-index { background: var(--driver-accent); color: var(--driver-ink); }
+    .driver-hud-stop--complete .driver-hud-stop-index { background: var(--driver-green); }
+    .driver-hud-stop-text { display: flex; flex-direction: column; min-width: 0; }
+    .driver-hud-stop-name { font-size: .79rem; font-weight: 700; line-height: 1.25; }
+    .driver-hud-stop--complete .driver-hud-stop-name { color: rgba(255,255,255,.5); text-decoration: line-through; }
+    .driver-hud-stop-meta { color: rgba(255,255,255,.55); font-size: .66rem; }
+    .driver-hud-empty { color: rgba(255,255,255,.62); font-size: .74rem; line-height: 1.4; }
+    .driver-map-card.is-expanded { border-radius: 0; display: flex; flex-direction: column; height: 100vh; height: 100dvh; inset: 0; position: fixed; width: 100vw; z-index: 2000; }
+    .driver-map-card.is-expanded .driver-map-stage { flex: 1 1 auto; min-height: 0; }
+    .driver-map-card.is-expanded .driver-map { height: 100%; min-height: 0; }
+    .driver-map-card.is-expanded .driver-map-caption { display: none; }
+    .driver-map.is-map-hud .leaflet-control-layers,
+    .driver-map.is-map-hud .leaflet-control-scale,
+    .driver-map.is-map-hud .map-inline-center-control { display: none; }
+    body.has-expanded-map { overflow: hidden; }
+    .driver-location-marker { background: transparent; }
+    .driver-marker-dot { background: var(--driver-accent); border: 3px solid var(--driver-ink); border-radius: 50%; box-shadow: 0 2px 10px rgba(16,33,43,.32); height: 16px; left: 2px; position: absolute; top: 2px; width: 16px; z-index: 2; }
+    .driver-marker-pulse { animation: driver-marker-pulse 2s infinite; background: rgba(246,201,69,.36); border-radius: 50%; height: 20px; left: 0; position: absolute; top: 0; width: 20px; z-index: 1; }
+    @keyframes driver-marker-pulse { 0% { transform: scale(1); opacity: .85; } 100% { transform: scale(2.5); opacity: 0; } }
+    @keyframes driver-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes driver-pulse { 0% { box-shadow: 0 0 0 0 rgba(24,129,91,.42); transform: scale(1); } 70% { box-shadow: 0 0 0 10px rgba(24,129,91,0); transform: scale(1.08); } 100% { box-shadow: 0 0 0 0 rgba(24,129,91,0); transform: scale(1); } }
+
+    .driver-attendance-card, .driver-chat-card, .driver-editor-card { padding: 1.35rem; }
+    .driver-count { background: #eef3f1; border: 1px solid var(--driver-line); border-radius: 999px; color: var(--driver-ink-soft); font-size: .69rem; font-weight: 800; padding: .42rem .72rem; }
+    .driver-attendance-list { margin-top: 1rem; max-height: 344px; overflow-y: auto; padding-right: .18rem; }
+    .driver-attendance-list::-webkit-scrollbar { width: 5px; }
+    .driver-attendance-list::-webkit-scrollbar-thumb { background: #cbd4d0; border-radius: 6px; }
+    .driver-attendance-item { align-items: center; border-bottom: 1px solid #edf0ef; display: flex; gap: .6rem; justify-content: space-between; padding: .78rem 0; }
+    .driver-attendance-item:first-child { padding-top: .1rem; }
+    .driver-attendance-item:last-child { border-bottom: 0; padding-bottom: .1rem; }
+    .driver-student-name { color: var(--driver-ink); font-size: .8rem; font-weight: 800; }
+    .driver-student-school { color: var(--driver-muted); font-size: .68rem; margin-top: .1rem; }
+    .driver-attendance-controls { align-items: center; display: flex; flex-shrink: 0; gap: .38rem; }
+    .driver-attendance-status { background: #f2f4f3; border-radius: 999px; color: #637077; font-size: .61rem; font-weight: 800; padding: .4rem .58rem; text-transform: uppercase; }
+    .driver-attendance-button { align-items: center; background: #fff; border: 1px solid var(--driver-line); border-radius: 9px; display: inline-flex; font-size: .78rem; height: 31px; justify-content: center; transition: background .18s var(--driver-ease), border-color .18s var(--driver-ease), transform .18s var(--driver-ease); width: 31px; }
+    .driver-attendance-button:active { transform: scale(.94); }
+    .driver-attendance-button--up { color: var(--driver-green); }
+    .driver-attendance-button--up:hover { background: #ebf7f1; border-color: var(--driver-green); color: var(--driver-green); }
+    .driver-attendance-button--down { color: #bf7d17; }
+    .driver-attendance-button--down:hover { background: #fff8e9; border-color: #bf7d17; color: #a76b0e; }
+
+    .driver-lower-row { margin-top: 1.5rem; }
+    .driver-chat-box { background: #f6f8f7; border: 1px solid #eef1ef; border-radius: var(--driver-radius-sm); height: 180px; margin: 1rem 0; overflow-y: auto; padding: .85rem; }
+    .driver-chat-message { background: #fff; border-left: 3px solid var(--driver-accent); border-radius: 0 10px 10px 0; box-shadow: var(--driver-shadow-sm); color: #435159; font-size: .74rem; line-height: 1.35; padding: .55rem .7rem; }
+    .driver-chat-message + .driver-chat-message { margin-top: .6rem; }
+    .driver-chat-message strong { color: var(--driver-ink); display: block; font-size: .68rem; margin-bottom: .14rem; }
+    .driver-chat-message p { margin: 0; }
+    .driver-chat-form { display: flex; gap: .5rem; }
+    .driver-chat-input { background: #fff; border: 1px solid #dce3e0; border-radius: var(--driver-radius-sm); color: var(--driver-ink); font-size: .78rem; min-width: 0; padding: .74rem .8rem; transition: border-color .2s var(--driver-ease), box-shadow .2s var(--driver-ease); width: 100%; }
+    .driver-chat-input:focus { border-color: var(--driver-accent-deep); box-shadow: 0 0 0 .18rem rgba(246,201,69,.18); outline: none; }
+    .driver-chat-send { align-items: center; background: var(--driver-ink); border: 1px solid var(--driver-ink); border-radius: var(--driver-radius-sm); color: var(--driver-accent); display: inline-flex; height: 42px; justify-content: center; transition: background .2s var(--driver-ease), transform .2s var(--driver-ease); width: 46px; }
+    .driver-chat-send:hover { background: var(--driver-ink-soft); transform: translateY(-1px); }
+    .driver-safety-card { background: linear-gradient(160deg, var(--driver-ink-soft) 0%, #12262f 100%); border-radius: var(--driver-radius); color: #fff; padding: 1.35rem; }
+    .driver-safety-card h3 { font-size: .94rem; font-weight: 800; margin: 0; }
+    .driver-safety-card h3 i { color: var(--driver-accent); }
+    .driver-safety-card p { color: rgba(255,255,255,.66); font-size: .74rem; line-height: 1.55; margin: .8rem 0 0; }
+    .driver-safety-list { list-style: none; margin: 1rem 0 0; padding: 0; }
+    .driver-safety-list li { align-items: flex-start; color: rgba(255,255,255,.82); display: flex; font-size: .72rem; gap: .52rem; margin-bottom: .55rem; }
+    .driver-safety-list i { color: var(--driver-accent); margin-top: .08rem; }
+    .driver-navigation-panel { background: #f7faf8; border-top: 1px solid var(--driver-line); padding: 1.1rem 1.35rem 1.35rem; }
+    .driver-navigation-grid { display: grid; gap: .75rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: .85rem; }
+    .driver-navigation-item { background: #fff; border: 1px solid #e5ebe8; border-radius: var(--driver-radius-sm); padding: .85rem .95rem; transition: border-color .22s var(--driver-ease), box-shadow .22s var(--driver-ease), transform .22s var(--driver-ease); }
+    .driver-navigation-item:hover { border-color: #d7e2de; box-shadow: var(--driver-shadow-sm); transform: translateY(-2px); }
+    .driver-navigation-item span { color: var(--driver-muted); display: block; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .driver-navigation-item strong { color: var(--driver-ink); display: block; font-size: .84rem; margin-top: .22rem; }
+    .driver-navigation-note { color: var(--driver-muted); font-size: .72rem; line-height: 1.45; margin: .85rem 0 0; }
+    .driver-editor-card .form-control,
+    .driver-editor-card .form-select,
+    .driver-editor-card .form-check-input { border-radius: var(--driver-radius-sm); box-shadow: none; }
+    .driver-editor-card .form-control:focus,
+    .driver-editor-card .form-select:focus { border-color: var(--driver-accent-deep); box-shadow: 0 0 0 .18rem rgba(246, 201, 69, .18); }
+    .driver-stop-editor { background: #f8faf9; border: 1px solid #e7ece9; border-radius: var(--driver-radius-sm); padding: 1rem 1.1rem; transition: border-color .22s var(--driver-ease), box-shadow .22s var(--driver-ease); }
+    .driver-stop-editor:hover { border-color: #d7e2de; box-shadow: var(--driver-shadow-sm); }
+    .driver-stop-editor + .driver-stop-editor { margin-top: .8rem; }
+    .driver-stop-editor summary { align-items: center; cursor: pointer; display: flex; justify-content: space-between; gap: 1rem; list-style: none; }
+    .driver-stop-editor summary::-webkit-details-marker { display: none; }
+    .driver-stop-editor[open] summary { margin-bottom: .9rem; }
+    .driver-stop-label { color: var(--driver-muted); font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .driver-stop-meta { color: var(--driver-muted); font-size: .72rem; margin-top: .15rem; }
+    .driver-stop-chevron { color: var(--driver-accent-deep); font-size: .9rem; transition: transform .22s var(--driver-ease); }
+    .driver-stop-editor[open] .driver-stop-chevron { transform: rotate(180deg); }
+    .driver-profile-photo { border: 1px solid var(--driver-line); border-radius: var(--driver-radius-sm); box-shadow: var(--driver-shadow-sm); display: block; height: 168px; object-fit: cover; width: 100%; }
+    .driver-profile-photo--empty { align-items: center; background: #f0f4f3; color: var(--driver-muted); display: grid; font-size: .72rem; line-height: 1.45; padding: 1rem; place-items: center; text-align: center; }
+    .driver-house-editor { background: #fffdf6; border: 1px solid #f1e9ce; border-radius: var(--driver-radius-sm); margin-bottom: 1rem; padding: 1rem 1.1rem; }
+    .driver-house-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .driver-house-controls .form-select { border-radius: var(--driver-radius-sm); flex: 1 1 240px; min-width: 0; }
+    .driver-field-help { color: var(--driver-muted); font-size: .68rem; line-height: 1.4; margin-top: .35rem; }
+    .driver-place-action { width: auto; white-space: nowrap; }
+    .driver-place-action.is-active { background: var(--driver-ink); border-color: var(--driver-ink); color: #fff; }
+    .driver-map.is-placing-house,
+    .driver-map.is-placing-house .leaflet-interactive { cursor: crosshair !important; }
+    .driver-flash-wrap { margin-bottom: 1rem; }
+    .driver-flash-wrap .alert { border-radius: var(--driver-radius-sm); margin-bottom: 0; }
+    .driver-empty { padding: 3.4rem 1.25rem; text-align: center; }
+    .driver-empty i { color: var(--driver-accent); font-size: 2.5rem; }
+    .driver-empty h2 { color: var(--driver-ink); font-size: 1.15rem; font-weight: 800; margin: .8rem 0 .35rem; }
+    .driver-empty p { color: var(--driver-muted); font-size: .84rem; margin: 0; }
+
+    .leaflet-container { background: #e8edeb !important; font-family: 'Open Sans', sans-serif; }
+    @media (max-width: 991.98px) {
+        .driver-control-bar { align-items: flex-start; flex-direction: column; }
+        .driver-control-route { max-width: 100%; width: 100%; }
+        .driver-control-meta { justify-content: flex-start; width: 100%; }
+        .driver-control { padding-bottom: 3.4rem; }
+        .driver-map-card, .driver-map { min-height: 370px; }
+    }
+    @media (max-width: 575.98px) {
+        .driver-topbar-inner { min-height: 62px; }
+        .driver-workspace-label { display: none; }
+        .driver-brand { font-size: .98rem; }
+        .driver-control { padding: 1.2rem 0 3.2rem; }
+        .driver-control-meta { align-items: stretch; flex-direction: column; }
+        .driver-control-driver { padding-right: 0; }
+        .driver-control-status { justify-content: center; }
+        .driver-parent-link { width: 100%; }
+        .driver-main { margin-top: -2.45rem; }
+        .driver-main--with-flash { margin-top: -1rem; }
+        .driver-map-card, .driver-map { min-height: 325px; }
+        .driver-bus-image { height: 145px; }
+        .driver-attendance-status { display: none; }
+        .driver-lower-row { margin-top: 1rem; }
+        .driver-navigation-grid { grid-template-columns: 1fr; }
+        .driver-hud-stops { width: calc(100% - 2rem); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .driver-card, .driver-live-state.is-live .driver-live-dot, .driver-control-status.is-live .driver-live-dot, .driver-marker-pulse { animation: none !important; }
+        .driver-primary-action:hover, .driver-parent-link:hover, .driver-navigation-item:hover, .driver-metric:hover { transform: none; }
+    }
+</style>
+{% endblock %}
+
+{% block flash_messages %}{% endblock %}
+
+{% block content %}
+{% set driver_messages = get_flashed_messages(with_categories=true) %}
+<div class="driver-app">
+    <header class="driver-topbar">
+        <div class="container d-flex align-items-center justify-content-between driver-topbar-inner">
+            <a class="driver-brand d-flex align-items-center gap-2" href="{{ url_for('comercial_bp.home') }}">
+                <span class="driver-brand-logo"><img src="{{ url_for('static', filename=config.BRAND_LOGO) }}" alt="{{ config.APP_NAME }}"></span>
+                <span>{{ config.APP_NAME|upper }}</span>
+            </a>
+            <span class="driver-workspace-label">Centro de operación</span>
+            <form method="post" action="{{ url_for('conductor_bp.salir') }}">
+                <button class="btn btn-sm btn-outline-light" type="submit">Salir</button>
+            </form>
+        </div>
+    </header>
+
+    <section class="driver-control">
+        <div class="container position-relative" style="z-index: 1;">
+            <div class="driver-control-bar">
+                {% if rutas %}
+                <div class="driver-control-route">
+                    <label for="routeSelect">Ruta asignada</label>
+                    <select id="routeSelect" class="driver-select" name="ruta_id" onchange="window.location.href='?ruta_id='+this.value">
+                        {% for item in rutas %}
+                        <option value="{{ item.id }}" {% if ruta and item.id == ruta.id %}selected{% endif %}>{{ item.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <i class="bi bi-chevron-down select-chevron"></i>
+                </div>
+                {% endif %}
+                <div class="driver-control-meta">
+                    <div class="driver-control-driver">
+                        <span class="driver-control-avatar"><i class="bi bi-person-badge"></i></span>
+                        <span>
+                            <strong>{{ conductor.nombre_completo }}</strong>
+                            <span>Conductor asignado</span>
+                        </span>
+                    </div>
+                    <span class="driver-control-status {% if ruta and ruta.recorrido_activo %}is-live{% else %}is-idle{% endif %}">
+                        <span class="driver-live-dot"></span>
+                        <span id="driverRouteStateHero">{% if ruta and ruta.recorrido_activo %}En recorrido{% else %}En espera{% endif %}</span>
+                    </span>
+                    {% if ruta %}
+                    <a class="driver-parent-link" href="{{ url_for('tracking_bp.sala_ruta', pin=ruta.pin_acceso) }}"><i class="bi bi-box-arrow-up-right me-1"></i> Portal familias</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <main class="driver-main{% if driver_messages %} driver-main--with-flash{% endif %}">
+        <div class="container">
+            {% if driver_messages %}
+                <div class="driver-flash-wrap">
+                    {% for category, message in driver_messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% if ruta %}
+            <div class="row g-4 align-items-stretch">
+                <div class="col-xl-4">
+                    <section class="driver-card driver-status-card h-100" id="driverPanel"
+                        data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}" data-conductor-id="{{ ruta.conductor_id }}"
+                        data-recorrido-activo="{{ 'true' if ruta.recorrido_activo else 'false' }}">
+                        <div class="driver-status-heading d-flex justify-content-between align-items-center gap-3">
+                            <div>
+                                <div class="driver-card-label">Control de ruta</div>
+                                <h2 class="driver-section-title mt-1">{{ ruta.nombre }}</h2>
+                            </div>
+                            <div class="driver-live-state {% if ruta.recorrido_activo %}is-live{% else %}is-idle{% endif %}"><span class="driver-live-dot"></span><span id="driverRouteState">{% if ruta.recorrido_activo %}En recorrido{% else %}En espera{% endif %}</span></div>
+                        </div>
+                        <div class="driver-status-body">
+                            <div class="driver-bus-card">
+                                <img class="driver-bus-image" src="{{ conductor.foto_publica_url or url_for('static', filename='images/buseta-colombiana.jpg') }}" alt="Buseta escolar de {{ conductor.nombre_completo }}">
+                                <div class="driver-bus-caption">
+                                    <div><span>Tu buseta</span><strong>{{ conductor.nombre_vehiculo if conductor and conductor.nombre_vehiculo else "Transporte escolar" }}</strong></div>
+                                    {% if conductor and conductor.placa_vehiculo %}<span class="driver-bus-plate">{{ conductor.placa_vehiculo }}</span>{% endif %}
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                                <span class="driver-card-label">GPS del teléfono</span>
+                                <span class="driver-gps-status is-ready" id="driverGpsStatus"><i class="bi bi-geo-alt"></i><span id="driverGpsStatusText">Listo para activar</span></span>
+                            </div>
+                            <button class="driver-primary-action js-route-start" data-ruta-id="{{ ruta.id }}"><i class="bi bi-play-fill me-1"></i> Iniciar recorrido</button>
+                            <button class="driver-stop-action js-route-finish mt-2" data-ruta-id="{{ ruta.id }}"><i class="bi bi-stop-fill me-1"></i> Finalizar ruta</button>
+
+                            <div class="driver-metrics">
+                                <div class="driver-metric">
+                                    <span class="driver-metric-icon"><i class="bi bi-key"></i></span>
+                                    <div class="driver-metric-copy"><span>PIN de acceso</span><strong>{{ ruta.pin_acceso }}</strong></div>
+                                </div>
+                                <div class="driver-metric">
+                                    <span class="driver-metric-icon"><i class="bi bi-buildings"></i></span>
+                                    <div class="driver-metric-copy"><span>Ciudad de la ruta</span><strong>{{ ruta.ciudad or "Pendiente" }}</strong></div>
+                                </div>
+                                <div class="driver-metric">
+                                    <span class="driver-metric-icon"><i class="bi bi-clock-history"></i></span>
+                                    <div class="driver-metric-copy"><span>Última actualización</span><strong id="driverLastUpdate">{{ ruta.ultima_ubicacion_en.strftime('%H:%M:%S') if ruta.ultima_ubicacion_en else "Sin datos" }}</strong></div>
+                                </div>
+                                <div class="driver-metric">
+                                    <span class="driver-metric-icon"><i class="bi bi-crosshair"></i></span>
+                                    <div class="driver-metric-copy"><span>Coordenadas actuales</span><strong id="driverCoordinates">{{ ruta.latitud_actual if ruta.latitud_actual else "--" }}, {{ ruta.longitud_actual if ruta.longitud_actual else "--" }}</strong></div>
+                                </div>
+                                <div class="driver-metric">
+                                    <span class="driver-metric-icon"><i class="bi bi-flag"></i></span>
+                                    <div class="driver-metric-copy"><span>Destino</span><strong>{{ ruta.destino or "Destino pendiente" }}</strong></div>
+                                </div>
+                            </div>
+                            <p class="driver-notice mb-0" id="driverNotice"><i class="bi bi-broadcast-pin me-1"></i> Listo para transmitir ubicación en vivo.</p>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="col-xl-8">
+                    <section class="driver-card driver-map-card">
+                        <div class="map-toolbar">
+                            <span class="map-toolbar-title"><i class="bi bi-broadcast me-2"></i>Ubicación en vivo</span>
+                            <div class="map-toolbar-actions">
+                                <button class="btn map-center-button js-map-center" type="button"
+                                    data-map-target="driverMap"
+                                    {% if ruta.latitud_actual is none or ruta.longitud_actual is none %}disabled{% endif %}>
+                                    <i class="bi bi-crosshair me-2"></i>Centrar punto
+                                </button>
+                                <button class="btn map-expand-button js-map-expand" type="button" data-map-target="driverMap" aria-pressed="false" title="Ampliar mapa">
+                                    <i class="bi bi-arrows-angle-expand me-2"></i><span class="js-map-expand-label">Ampliar mapa</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="driver-map-stage">
+                            <div id="driverMap" class="driver-map" data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}"
+                                data-lat="{{ map_defaults.lat }}" data-lng="{{ map_defaults.lng }}"
+                                data-has-location="{{ 'true' if ruta.latitud_actual is not none and ruta.longitud_actual is not none else 'false' }}"
+                                data-zoom="{{ map_defaults.zoom }}"></div>
+                            <div class="driver-map-hud" id="driverMapHud">
+                                <div class="driver-hud-next">
+                                    <span class="driver-hud-next-label"><i class="bi bi-signpost-split-fill me-1"></i>Proxima parada</span>
+                                    <strong id="driverHudNextStop">Calculando...</strong>
+                                    <span class="driver-hud-next-meta" id="driverHudNextMeta">--</span>
+                                </div>
+                                <div class="driver-hud-stops">
+                                    <div class="driver-hud-stops-head"><i class="bi bi-list-ol me-1"></i>Orden de la ruta</div>
+                                    <ol class="driver-hud-stops-list" id="driverHudStops"></ol>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="driver-map-caption"><strong>{{ ruta.nombre }}</strong><span>Recorrido real, casitas de estudiantes y ruta sugerida.</span></div>
+                        <div class="driver-navigation-panel">
+                            <div class="driver-card-label">Guia asistida</div>
+                            <div class="driver-navigation-grid">
+                                <div class="driver-navigation-item">
+                                    <span>Proxima parada</span>
+                                    <strong id="driverNextStop">Calculando...</strong>
+                                </div>
+                                <div class="driver-navigation-item">
+                                    <span>Distancia estimada</span>
+                                    <strong id="driverNextDistance">--</strong>
+                                </div>
+                                <div class="driver-navigation-item">
+                                    <span>Voz</span>
+                                    <strong id="driverVoiceStatus">Lista</strong>
+                                </div>
+                            </div>
+                            <p class="driver-navigation-note mb-0" id="driverVoiceHint">La guia por voz usa el navegador y funciona como apoyo para la ruta, especialmente hacia la siguiente parada o colegio.</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <div class="row g-4 driver-lower-row">
+                <div class="col-lg-7">
+                    <section class="driver-card driver-attendance-card h-100">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div>
+                                <div class="driver-card-label">Registro de pasajeros</div>
+                                <h2 class="driver-section-title mt-1">Control de asistencia</h2>
+                            </div>
+                            <span class="driver-count">{{ estudiantes|length }} estudiantes</span>
+                        </div>
+                        <div class="driver-attendance-list">
+                            {% for estudiante in estudiantes %}
+                            {% set asistencia = asistencias_hoy.get(estudiante.id) %}
+                            <div class="driver-attendance-item attendance-item" data-student-id="{{ estudiante.id }}">
+                                <div class="min-w-0">
+                                    <div class="driver-student-name">{{ estudiante.nombre_completo }}</div>
+                                    <div class="driver-student-school">{{ estudiante.orden_parada or "-" }} · {{ estudiante.institucion or "Institucion pendiente" }}</div>
+                                    <div class="driver-student-school">{{ estudiante.direccion or "Direccion pendiente" }}</div>
+                                </div>
+                                <div class="driver-attendance-controls">
+                                    <span class="badge driver-attendance-status js-attendance-status">{{ asistencia.estado.value if asistencia else "pendiente" }}</span>
+                                    <button class="driver-attendance-button driver-attendance-button--up js-attendance-btn" type="button" title="Subió a la ruta" aria-label="Marcar que subió {{ estudiante.nombre_completo }}" data-ruta-id="{{ ruta.id }}" data-estudiante-id="{{ estudiante.id }}" data-estado="subio"><i class="bi bi-person-up"></i></button>
+                                    <button class="driver-attendance-button driver-attendance-button--down js-attendance-btn" type="button" title="Bajó de la ruta" aria-label="Marcar que bajó {{ estudiante.nombre_completo }}" data-ruta-id="{{ ruta.id }}" data-estudiante-id="{{ estudiante.id }}" data-estado="bajo"><i class="bi bi-person-down"></i></button>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4" style="color: var(--driver-muted); font-size: .82rem;">No hay estudiantes asignados a esta ruta.</div>
+                            {% endfor %}
+                        </div>
+                    </section>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="row g-4 h-100">
+                        <div class="col-md-7 col-lg-12">
+                            <section class="driver-card driver-chat-card">
+                                <div class="driver-card-label">Comunicación</div>
+                                <h2 class="driver-section-title mt-1">Novedades de la ruta</h2>
+                                <div id="chatMessages" class="driver-chat-box">
+                                    {% for mensaje in mensajes_recientes %}
+                                    <div class="driver-chat-message chat-message"><strong>{{ mensaje.remitente_nombre }}</strong><p>{{ mensaje.contenido }}</p></div>
+                                    {% else %}
+                                    <div class="text-center pt-4 text-secondary small">Sin mensajes recientes.</div>
+                                    {% endfor %}
+                                </div>
+                                <form id="chatForm" class="driver-chat-form" data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}" data-remitente-tipo="conductor">
+                                    <input type="hidden" id="chatSender" value="{{ ruta.conductor.nombre_completo if ruta.conductor else 'Conductor' }}">
+                                    <input id="chatMessage" class="driver-chat-input" placeholder="Enviar una novedad a las familias..." aria-label="Mensaje para las familias">
+                                    <button class="driver-chat-send" type="submit" aria-label="Enviar mensaje"><i class="bi bi-send-fill"></i></button>
+                                </form>
+                            </section>
+                        </div>
+                        <div class="col-md-5 col-lg-12">
+                            <aside class="driver-safety-card h-100">
+                                <h3><i class="bi bi-shield-check me-2"></i>Seguridad y GPS</h3>
+                                <p>Tu ubicación se comparte únicamente mientras la ruta está activa.</p>
+                                <ul class="driver-safety-list">
+                                    <li><i class="bi bi-check2"></i><span>Mantén la pantalla encendida durante el recorrido.</span></li>
+                                    <li><i class="bi bi-check2"></i><span>Confirma cada subida y bajada en el momento.</span></li>
+                                    <li><i class="bi bi-check2"></i><span>Usa el chat para novedades importantes.</span></li>
+                                </ul>
+                            </aside>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 driver-lower-row">
+                <div class="col-lg-4">
+                    <section class="driver-card driver-editor-card h-100">
+                        <div class="driver-card-label">Ajustes de la ruta</div>
+                        <h2 class="driver-section-title mt-1">Editar informacion general</h2>
+                        <p class="driver-navigation-note">Si cambias ciudad, origen o destino, el sistema intentara recalcular la ubicacion para la guia.</p>
+                        <form method="post" action="{{ url_for('conductor_bp.actualizar_ruta', ruta_id=ruta.id) }}" class="row g-3 js-school-form">
+                            <div class="col-12"><input class="form-control" name="nombre" value="{{ ruta.nombre }}" placeholder="Nombre de la ruta" required></div>
+                            <div class="col-md-6">
+                                <input class="form-control text-uppercase" name="pin_acceso" value="{{ ruta.pin_acceso }}" maxlength="10" placeholder="PIN para familias" required>
+                                <div class="driver-field-help">Este es el PIN que usan los padres para entrar al portal de la ruta.</div>
+                            </div>
+                            <div class="col-md-6"><input class="form-control js-city-input" name="ciudad" value="{{ ruta.ciudad or '' }}" placeholder="Ciudad o municipio" list="municipiosCatalogo"></div>
+                            <div class="col-12"><input class="form-control" name="origen" value="{{ ruta.origen or '' }}" placeholder="Origen o punto de salida"></div>
+                            <div class="col-md-6">
+                                <select class="form-select js-school-select" name="destino" data-selected="{{ ruta.destino or '' }}">
+                                    <option value="">Selecciona un colegio principal</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <input class="form-control js-school-custom" name="destino_custom" value="" placeholder="O escribe otro destino manual">
+                                <div class="driver-field-help">Si el colegio no sale en la lista, escríbelo aquí.</div>
+                            </div>
+                            <div class="col-md-6"><input class="form-control" name="horario_salida" value="{{ ruta.horario_salida or '' }}" placeholder="Horario salida"></div>
+                            <div class="col-md-6"><input class="form-control" name="horario_regreso" value="{{ ruta.horario_regreso or '' }}" placeholder="Horario regreso"></div>
+                            <div class="col-12"><textarea class="form-control" name="descripcion" rows="4" placeholder="Descripcion operativa">{{ ruta.descripcion or '' }}</textarea></div>
+                            <div class="col-12"><button class="driver-primary-action" type="submit"><i class="bi bi-save me-1"></i> Guardar ajustes</button></div>
+                        </form>
+                    </section>
+                </div>
+                <div class="col-lg-8">
+                    <section class="driver-card driver-editor-card h-100">
+                        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                            <div>
+                                <div class="driver-card-label">Paradas georreferenciadas</div>
+                                <h2 class="driver-section-title mt-1">Editar estudiantes y casitas</h2>
+                            </div>
+                            <span class="driver-count">{{ estudiantes|length }} paradas</span>
+                        </div>
+                        <p class="driver-navigation-note">Cada direccion se usa para pintar la casita en el mapa y ordenar la navegacion de la ruta.</p>
+                        <div class="driver-house-editor">
+                            <div class="driver-card-label">Casitas del mapa</div>
+                            <p class="driver-stop-meta mb-0 mt-1">Si la casa de un estudiante no aparece en el mapa, elige su nombre, toca "Ubicar casita" y luego el punto exacto en el mapa. Tambien puedes arrastrar una casita para corregirla.</p>
+                            <div class="driver-house-controls">
+                                <select id="housePlacementSelect" class="form-select" aria-label="Estudiante para ubicar en el mapa">
+                                    <option value="">{% if estudiantes | selectattr('latitud', 'none') | list | length %}Selecciona un estudiante...{% else %}No hay casitas pendientes{% endif %}</option>
+                                    {% for estudiante in estudiantes %}
+                                    {% if estudiante.latitud is none or estudiante.longitud is none %}
+                                    <option value="{{ estudiante.id }}" data-nombre="{{ estudiante.nombre_completo }}" data-lista="false">{{ estudiante.nombre_completo }} — casita pendiente</option>
+                                    {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <button class="driver-primary-action driver-place-action" type="button" id="housePlacementButton"><i class="bi bi-geo-alt me-1"></i> Ubicar casita en el mapa</button>
+                            </div>
+                            <p class="driver-stop-meta mb-0 mt-2" id="housePlacementHint">Al guardar, la casita entra a la ruta y el recorrido se recalcula solo.</p>
+                        </div>
+                        <details class="driver-stop-editor" open>
+                            <summary>
+                                <div>
+                                    <div class="driver-stop-label">Nuevo estudiante</div>
+                                    <strong>Agregar pasajero a esta ruta</strong>
+                                    <div class="driver-stop-meta">Al guardar, el sistema intentara ubicar su casa en el mapa automaticamente.</div>
+                                </div>
+                                <i class="bi bi-plus-lg driver-stop-chevron"></i>
+                            </summary>
+                            <form method="post" action="{{ url_for('conductor_bp.crear_estudiante', ruta_id=ruta.id) }}" class="row g-3 js-school-form">
+                                <div class="col-md-6"><input class="form-control" name="nombres" placeholder="Nombres" required></div>
+                                <div class="col-md-6"><input class="form-control" name="apellidos" placeholder="Apellidos" required></div>
+                                <div class="col-md-4"><input class="form-control" name="documento" placeholder="Documento"></div>
+                                <div class="col-md-4">
+                                    <select class="form-select js-school-select" name="institucion" data-selected="">
+                                        <option value="">Selecciona un colegio</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4"><input class="form-control js-school-custom" name="institucion_custom" placeholder="O escribe otro colegio"></div>
+                                <div class="col-md-4"><input class="form-control" name="grado" placeholder="Grado"></div>
+                                <div class="col-12"><input class="form-control" name="direccion" placeholder="Direccion de recogida"></div>
+                                <div class="col-md-4"><input class="form-control" name="barrio" placeholder="Barrio"></div>
+                                <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" value="{{ ruta.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                                <div class="col-md-4"><input class="form-control" type="number" min="1" name="orden_parada" placeholder="Orden parada"></div>
+                                <div class="col-12"><input class="form-control" name="referencia_direccion" placeholder="Referencia de la direccion"></div>
+                                <div class="col-md-4"><input class="form-control" name="acudiente_nombre" placeholder="Nombre del acudiente" required></div>
+                                <div class="col-md-4"><input class="form-control" name="acudiente_telefono" placeholder="Telefono del acudiente" required></div>
+                                <div class="col-md-4"><input class="form-control" type="email" name="acudiente_email" placeholder="Correo del acudiente"></div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="true" name="activo" id="studentActiveNew" checked>
+                                        <label class="form-check-label" for="studentActiveNew">Estudiante activo</label>
+                                    </div>
+                                </div>
+                                <div class="col-12"><button class="btn btn-dark rounded-pill px-4" type="submit">Guardar estudiante</button></div>
+                            </form>
+                        </details>
+                        {% for estudiante in estudiantes %}
+                        <details class="driver-stop-editor">
+                            <summary>
+                                <div>
+                                    <div class="driver-stop-label">Parada {{ estudiante.orden_parada or "-" }}</div>
+                                    <strong>{{ estudiante.nombre_completo }}</strong>
+                                    <div class="driver-stop-meta">{{ estudiante.direccion or "Direccion pendiente" }}{% if estudiante.barrio %} · {{ estudiante.barrio }}{% endif %}</div>
+                                    <div class="driver-stop-meta">
+                                        {% if estudiante.latitud is not none and estudiante.longitud is not none %}
+                                        Casita lista en mapa
+                                        {% else %}
+                                        Casita pendiente
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <i class="bi bi-chevron-down driver-stop-chevron"></i>
+                            </summary>
+                            <form method="post" action="{{ url_for('conductor_bp.actualizar_estudiante', estudiante_id=estudiante.id) }}" class="row g-3 js-school-form">
+                                <div class="col-md-6"><input class="form-control" name="nombres" value="{{ estudiante.nombres }}" placeholder="Nombres" required></div>
+                                <div class="col-md-6"><input class="form-control" name="apellidos" value="{{ estudiante.apellidos }}" placeholder="Apellidos" required></div>
+                                <div class="col-md-4"><input class="form-control" name="documento" value="{{ estudiante.documento or '' }}" placeholder="Documento"></div>
+                                <div class="col-md-4">
+                                    <select class="form-select js-school-select" name="institucion" data-selected="{{ estudiante.institucion or '' }}">
+                                        <option value="">Selecciona un colegio</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4"><input class="form-control js-school-custom" name="institucion_custom" value="" placeholder="Otro colegio"></div>
+                                <div class="col-md-2"><input class="form-control" name="grado" value="{{ estudiante.grado or '' }}" placeholder="Grado"></div>
+                                <div class="col-md-2"><input class="form-control" type="number" min="1" name="orden_parada" value="{{ estudiante.orden_parada or '' }}" placeholder="Orden"></div>
+                                <div class="col-12"><input class="form-control" name="direccion" value="{{ estudiante.direccion or '' }}" placeholder="Direccion de recogida"></div>
+                                <div class="col-md-4"><input class="form-control" name="barrio" value="{{ estudiante.barrio or '' }}" placeholder="Barrio"></div>
+                                <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" value="{{ estudiante.ciudad or ruta.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                                <div class="col-md-4"><input class="form-control" name="referencia_direccion" value="{{ estudiante.referencia_direccion or '' }}" placeholder="Referencia"></div>
+                                <div class="col-md-6"><input class="form-control" name="acudiente_nombre" value="{{ estudiante.acudiente_nombre }}" placeholder="Acudiente" required></div>
+                                <div class="col-md-3"><input class="form-control" name="acudiente_telefono" value="{{ estudiante.acudiente_telefono }}" placeholder="Telefono" required></div>
+                                <div class="col-md-3"><input class="form-control" type="email" name="acudiente_email" value="{{ estudiante.acudiente_email or '' }}" placeholder="Correo"></div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="true" name="activo" id="studentActive{{ estudiante.id }}" {% if estudiante.activo %}checked{% endif %}>
+                                        <label class="form-check-label" for="studentActive{{ estudiante.id }}">Estudiante activo</label>
+                                    </div>
+                                </div>
+                                <div class="col-12 d-flex gap-2 flex-wrap">
+                                    <button class="btn btn-dark rounded-pill px-4" type="submit">Actualizar parada</button>
+                                    <button class="btn btn-outline-danger rounded-pill px-4" type="submit" formaction="{{ url_for('conductor_bp.eliminar_estudiante', estudiante_id=estudiante.id) }}" formnovalidate onclick="return confirm('¿Deseas eliminar este estudiante de la ruta?');">Eliminar</button>
+                                </div>
+                            </form>
+                        </details>
+                        {% else %}
+                        <div class="text-center py-4" style="color: var(--driver-muted); font-size: .82rem;">Todavia no hay estudiantes asignados a esta ruta.</div>
+                        {% endfor %}
+                    </section>
+                </div>
+            </div>
+            {% else %}
+            <section class="driver-card driver-empty">
+                <i class="bi bi-signpost-split"></i>
+                <h2>No tienes rutas activas asignadas</h2>
+                <p>Contacta al administrador para que cree una ruta activa y la asigne a tu cuenta.</p>
+            </section>
+            {% endif %}
+
+            <div class="row g-4 driver-lower-row">
+                <div class="col-12">
+                    <section class="driver-card driver-editor-card">
+                        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                            <div>
+                                <div class="driver-card-label">Perfil del conductor</div>
+                                <h2 class="driver-section-title mt-1">Mi perfil y mi buseta</h2>
+                            </div>
+                            <span class="driver-count">{{ conductor.placa_vehiculo }}</span>
+                        </div>
+                        <p class="driver-navigation-note">Actualiza tus datos, la foto de tu buseta y tu contraseña. Los cambios se ven en tu panel, en el portal de familias y en el directorio publico.</p>
+                        <form method="post" action="{{ url_for('conductor_bp.actualizar_perfil') }}" enctype="multipart/form-data" class="row g-3">
+                            <input type="hidden" name="ruta_id" value="{{ ruta.id if ruta else '' }}">
+                            <div class="col-lg-4">
+                                {% if conductor.foto_publica_url %}
+                                <img class="driver-profile-photo" src="{{ conductor.foto_publica_url }}" alt="Foto de la buseta de {{ conductor.nombre_completo }}">
+                                {% else %}
+                                <div class="driver-profile-photo driver-profile-photo--empty">Aun no has subido una foto de tu buseta.</div>
+                                {% endif %}
+                                <label class="driver-card-label d-block mt-3" for="busPhoto">Foto de la buseta</label>
+                                <input class="form-control mt-1" id="busPhoto" type="file" name="foto" accept="image/png,image/jpeg,image/webp,image/gif">
+                                <input class="form-control mt-2" name="foto_url" placeholder="o pega una URL (https://...)">
+                                <div class="driver-stop-meta mt-2">Formatos permitidos: jpg, png, webp o gif.</div>
+                            </div>
+                            <div class="col-lg-8">
+                                <div class="row g-3">
+                                    <div class="col-md-6"><input class="form-control" name="nombres" value="{{ conductor.nombres }}" placeholder="Nombres" required></div>
+                                    <div class="col-md-6"><input class="form-control" name="apellidos" value="{{ conductor.apellidos }}" placeholder="Apellidos" required></div>
+                                    <div class="col-md-4"><input class="form-control" name="documento" value="{{ conductor.documento }}" placeholder="Documento"></div>
+                                    <div class="col-md-4"><input class="form-control" name="telefono" value="{{ conductor.telefono }}" placeholder="Telefono"></div>
+                                    <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" value="{{ conductor.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                                    <div class="col-12"><input class="form-control" type="email" name="email" value="{{ conductor.email }}" placeholder="Correo de acceso" required></div>
+                                    <div class="col-md-6"><input class="form-control" name="nombre_vehiculo" value="{{ conductor.nombre_vehiculo }}" placeholder="Vehiculo (marca y linea)"></div>
+                                    <div class="col-md-3"><input class="form-control" name="placa_vehiculo" value="{{ conductor.placa_vehiculo }}" placeholder="Placa"></div>
+                                    <div class="col-md-3"><input class="form-control" type="number" min="1" name="capacidad_vehiculo" value="{{ conductor.capacidad_vehiculo or '' }}" placeholder="Capacidad"></div>
+                                    <div class="col-md-4"><input class="form-control" name="color_vehiculo" value="{{ conductor.color_vehiculo or '' }}" placeholder="Color del vehiculo"></div>
+                                    <div class="col-md-8"><textarea class="form-control" name="descripcion_publica" rows="3" placeholder="Descripcion para el directorio">{{ conductor.descripcion_publica or '' }}</textarea></div>
+                                    <div class="col-md-6"><input class="form-control" type="password" name="password_actual" placeholder="Contraseña actual" autocomplete="current-password"></div>
+                                    <div class="col-md-6"><input class="form-control" type="password" name="password_nueva" placeholder="Nueva contraseña (opcional)" minlength="8" autocomplete="new-password"></div>
+                                    <div class="col-12"><p class="driver-navigation-note mb-0">Deja los dos campos de contraseña vacios si no quieres cambiarla.</p></div>
+                                    <div class="col-md-6"><input class="form-control" name="pregunta_seguridad" list="preguntasSeguridad" value="{{ conductor.pregunta_seguridad or '' }}" placeholder="Pregunta de seguridad"></div>
+                                    <div class="col-md-6"><input class="form-control" type="password" name="respuesta_seguridad" placeholder="{% if conductor.tiene_recuperacion %}Nueva respuesta (opcional){% else %}Respuesta de seguridad{% endif %}" autocomplete="off"></div>
+                                    <div class="col-12"><p class="driver-navigation-note mb-0">La pregunta y su respuesta te permiten restablecer tu contraseña desde el ingreso, sin depender del administrador.</p></div>
+                                    <div class="col-12"><button class="driver-primary-action" type="submit"><i class="bi bi-save me-1"></i> Guardar perfil</button></div>
+                                </div>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<datalist id="municipiosCatalogo">
+    {% for municipio in municipios_catalogo %}
+    <option value="{{ municipio }}"></option>
+    {% endfor %}
+</datalist>
+<datalist id="colegiosCatalogo">
+    {% for municipio, colegios in colegios_catalogo.items() %}
+        {% for colegio in colegios %}
+    <option value="{{ colegio }}" data-city="{{ municipio }}"></option>
+        {% endfor %}
+    {% endfor %}
+</datalist>
+<script id="schoolCatalogData" type="application/json">{{ colegios_catalogo|tojson }}</script>
+<datalist id="preguntasSeguridad">
+    {% for pregunta in preguntas_seguridad %}
+    <option value="{{ pregunta }}"></option>
+    {% endfor %}
+</datalist>
+{% endblock %}

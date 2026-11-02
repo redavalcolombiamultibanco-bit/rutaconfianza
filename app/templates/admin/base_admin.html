@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{# Layout comun del panel administrativo: barra lateral + area de contenido. #}
+{% block flash_messages %}{% endblock %}
+{% block content %}
+<div class="admin-shell">
+    <aside class="admin-sidebar" id="adminSidebar">
+        <a class="admin-sidebar__brand" href="{{ url_for('admin_bp.dashboard') }}">
+            <span class="admin-sidebar__logo">
+                <img src="{{ url_for('static', filename=config.BRAND_LOGO) }}" alt="{{ config.APP_NAME }}">
+            </span>
+            <span class="admin-sidebar__brand-text">
+                <strong>Panel interno</strong>
+                <small>{{ config.COMPANY_NAME }}</small>
+            </span>
+        </a>
+        <nav class="admin-nav">
+            <a class="admin-nav__link {% if seccion == 'resumen' %}is-active{% endif %}" href="{{ url_for('admin_bp.dashboard') }}">
+                <i class="bi bi-speedometer2"></i><span>Resumen</span>
+            </a>
+            <a class="admin-nav__link {% if seccion == 'conductores' %}is-active{% endif %}" href="{{ url_for('admin_bp.conductores') }}">
+                <i class="bi bi-person-badge"></i><span>Conductores</span>
+            </a>
+            <a class="admin-nav__link {% if seccion == 'rutas' %}is-active{% endif %}" href="{{ url_for('admin_bp.rutas') }}">
+                <i class="bi bi-signpost-split"></i><span>Rutas</span>
+            </a>
+            <a class="admin-nav__link {% if seccion == 'estudiantes' %}is-active{% endif %}" href="{{ url_for('admin_bp.estudiantes') }}">
+                <i class="bi bi-mortarboard"></i><span>Estudiantes</span>
+            </a>
+            <a class="admin-nav__link {% if seccion == 'solicitudes' %}is-active{% endif %}" href="{{ url_for('admin_bp.solicitudes') }}">
+                <i class="bi bi-inbox"></i><span>Solicitudes</span>
+            </a>
+            <a class="admin-nav__link {% if seccion == 'mensajes' %}is-active{% endif %}" href="{{ url_for('admin_bp.mensajes') }}">
+                <i class="bi bi-envelope-paper"></i><span>Mensajes</span>
+            </a>
+            <span class="admin-nav__separator">Control</span>
+            <a class="admin-nav__link {% if seccion == 'reportes' %}is-active{% endif %}" href="{{ url_for('admin_bp.reportes') }}">
+                <i class="bi bi-file-earmark-bar-graph"></i><span>Reportes</span>
+            </a>
+            <a class="admin-nav__link {% if seccion == 'respaldos' %}is-active{% endif %}" href="{{ url_for('admin_bp.respaldos') }}">
+                <i class="bi bi-hdd-stack"></i><span>Respaldos</span>
+            </a>
+            <a class="admin-nav__link {% if seccion == 'usuarios' %}is-active{% endif %}" href="{{ url_for('admin_bp.usuarios') }}">
+                <i class="bi bi-people"></i><span>Usuarios</span>
+            </a>
+        </nav>
+        <div class="admin-sidebar__footer">
+            <div class="admin-sidebar__user">
+                <i class="bi bi-person-circle"></i>
+                <div>
+                    <strong>{{ admin_actual.nombre_mostrar }}</strong>
+                    <small>{{ admin_actual.username }}</small>
+                </div>
+            </div>
+            <form method="post" action="{{ url_for('admin_bp.salir') }}">
+                <button class="admin-sidebar__logout" type="submit">
+                    <i class="bi bi-box-arrow-right"></i><span>Cerrar sesion</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+    <div class="admin-sidebar__overlay" id="adminSidebarOverlay"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <button class="admin-topbar__toggle" id="adminSidebarToggle" type="button" aria-label="Abrir menu">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="admin-topbar__heading">
+                <span class="admin-topbar__eyebrow">{% block admin_eyebrow %}Panel administrativo{% endblock %}</span>
+                <h1 class="admin-topbar__title">{% block admin_title %}Panel administrativo{% endblock %}</h1>
+            </div>
+            <div class="admin-topbar__meta">
+                <span class="admin-clock" id="adminClock" title="Hora actual">--:--</span>
+                <span class="admin-date" id="adminDate"></span>
+            </div>
+            <a class="admin-topbar__link" href="{{ url_for('comercial_bp.home') }}" target="_blank" rel="noopener">
+                <i class="bi bi-box-arrow-up-right"></i><span>Ver sitio</span>
+            </a>
+        </header>
+
+        <div class="admin-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="admin-flash">
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show mb-2" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            {% block admin_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    const sidebar = document.getElementById("adminSidebar");
+    const overlay = document.getElementById("adminSidebarOverlay");
+    const toggle = document.getElementById("adminSidebarToggle");
+    if (!sidebar || !toggle) return;
+    const cerrar = () => sidebar.classList.remove("is-open");
+    toggle.addEventListener("click", () => sidebar.classList.add("is-open"));
+    if (overlay) overlay.addEventListener("click", cerrar);
+    sidebar.querySelectorAll(".admin-nav__link").forEach((enlace) => enlace.addEventListener("click", cerrar));
+})();
+
+(function () {
+    const reloj = document.getElementById("adminClock");
+    const fecha = document.getElementById("adminDate");
+    if (!reloj) return;
+    const DIAS = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+    const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    const pintar = () => {
+        const ahora = new Date();
+        let horas = ahora.getHours();
+        const sufijo = horas >= 12 ? "p.m." : "a.m.";
+        horas = horas % 12 || 12;
+        const minutos = String(ahora.getMinutes()).padStart(2, "0");
+        reloj.textContent = horas + ":" + minutos + " " + sufijo;
+        if (fecha) {
+            fecha.textContent = DIAS[ahora.getDay()] + ", " + ahora.getDate() + " de " + MESES[ahora.getMonth()];
+        }
+    };
+    pintar();
+    setInterval(pintar, 30000);
+})();
+</script>
+{% endblock %}

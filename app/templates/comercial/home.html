@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}{{ config.APP_NAME }} | Control, Seguridad y Logistica Escolar{% endblock %}
+{% block content %}
+<section class="hero-georuta" data-hero-carousel>
+    <div class="hero-carousel" aria-hidden="true">
+        <img class="hero-carousel-image is-active" src="{{ url_for('static', filename='images/portada-ruta-escolar-1.jpg') }}" alt="">
+        <img class="hero-carousel-image" src="{{ url_for('static', filename='images/portada-ruta-escolar-2.jpg') }}" alt="">
+    </div>
+    <div class="hero-overlay"></div>
+    <div class="container hero-content">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7 text-center text-lg-start">
+                <span class="hero-eyebrow">Control, seguridad y seguimiento familiar</span>
+                <h1 class="hero-title">Portal de padres para ver la ruta de su hijo.</h1>
+                <p class="hero-subtitle">Ingrese con el PIN entregado por la empresa o el conductor para ver el mapa en vivo, las paradas y el estado del recorrido.</p>
+                <div class="hero-highlights justify-content-center justify-content-lg-start">
+                    <span><i class="bi bi-geo-alt"></i> Mapa en tiempo real</span>
+                    <span><i class="bi bi-house-door"></i> Paradas del recorrido</span>
+                    <span><i class="bi bi-chat-dots"></i> Avisos y chat de ruta</span>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="parent-access-card mx-auto">
+                    <span class="parent-access-card__badge">Portal de padres</span>
+                    <h2>Ingrese con el PIN de la ruta</h2>
+                    <p>Este acceso es solo para familias. No necesita usuario ni contraseña adicional.</p>
+                    <form action="{{ url_for('tracking_bp.ingreso') }}" method="post" class="parent-access-card__form">
+                        <label class="visually-hidden" for="heroPinRuta">PIN de la ruta</label>
+                        <input id="heroPinRuta" type="text" class="form-control" placeholder="PIN DE LA RUTA" name="pin" maxlength="10" required>
+                        <button type="submit" class="btn-ingresar">Entrar al portal</button>
+                    </form>
+                    <a href="{{ url_for('tracking_bp.ingreso') }}" class="parent-access-card__link">Abrir pantalla completa del portal de padres</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="portfolio-cta">
+    <div class="container">
+        <div class="portfolio-grid">
+            <article class="portfolio-card portfolio-card--primary">
+                <span class="portfolio-tag">Para familias</span>
+                <h3>¿Quieres una ruta para tu hijo?</h3>
+                <p>Consulta la ruta, ubica el vehículo y recibe avisos claros sobre salida, llegada y novedades.</p>
+                <a href="{{ url_for('tracking_bp.ingreso') }}" class="portfolio-link">Ver mi ruta</a>
+            </article>
+
+            <article class="portfolio-card">
+                <span class="portfolio-tag">Para colegios</span>
+                <h3>¿Necesitas más control y confianza?</h3>
+                <p>Centraliza rutas, conductores y comunicación para ofrecer un servicio escolar más seguro y ordenado.</p>
+                <a href="{{ url_for('comercial_bp.directorio') }}" class="portfolio-link">Conoce más</a>
+            </article>
+
+            <article class="portfolio-card">
+                <span class="portfolio-tag">Trabaja con nosotros</span>
+                <h3>¿Quieres formar parte de la operación?</h3>
+                <p>Únete a una red con tecnología, acompañamiento y procesos pensados para crecer con orden.</p>
+                <a href="{{ url_for('comercial_bp.directorio') }}" class="portfolio-link">Haz parte del equipo</a>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-white" id="beneficios">
+    <div class="container">
+        <div class="section-title">
+            <span>Beneficios</span>
+            <h2>¿Por qué elegir {{ config.APP_NAME }}?</h2>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <i class="bi bi-globe"></i>
+                    </div>
+                    <h3>Totalmente en línea</h3>
+                    <p>El sistema funciona online y no es necesario instalar ningún software adicional. Puede acceder desde cualquier computadora con conexión a Internet.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <i class="bi bi-crosshair"></i>
+                    </div>
+                    <h3>Monitoreo</h3>
+                    <p>Envío de notificaciones vía Email o WhatsApp ante eventos de riesgo y seguimiento GPS en tiempo real por WebSockets.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h3>Servidores en la nube</h3>
+                    <p>Sin virus ni problemas de hardware, todos los datos de {{ config.APP_NAME }} están seguros en servidores de alta disponibilidad.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-light" id="servicios">
+    <div class="container">
+        <div class="section-title">
+            <span>Servicios</span>
+            <h2>Todo lo que incluye la plataforma</h2>
+        </div>
+
+        <div class="service-grid">
+            <article class="service-card">
+                <span class="service-card__icon"><i class="bi bi-geo-alt"></i></span>
+                <h3>Seguimiento GPS en vivo</h3>
+                <p>Las familias ven el vehiculo sobre el mapa con el recorrido real ajustado a las vias.</p>
+            </article>
+            <article class="service-card">
+                <span class="service-card__icon"><i class="bi bi-person-check"></i></span>
+                <h3>Control de asistencia</h3>
+                <p>Registro de subida y bajada de cada estudiante durante el recorrido.</p>
+            </article>
+            <article class="service-card">
+                <span class="service-card__icon"><i class="bi bi-chat-dots"></i></span>
+                <h3>Comunicacion por ruta</h3>
+                <p>Chat grupal entre el conductor y los acudientes de la misma ruta.</p>
+            </article>
+            <article class="service-card">
+                <span class="service-card__icon"><i class="bi bi-signpost-split"></i></span>
+                <h3>Gestion de rutas y paradas</h3>
+                <p>Creacion, edicion y orden de las paradas de cada estudiante sobre el mapa.</p>
+            </article>
+            <article class="service-card">
+                <span class="service-card__icon"><i class="bi bi-people"></i></span>
+                <h3>Directorio de conductores</h3>
+                <p>Perfiles con vehiculo, placa y datos de contacto para las familias.</p>
+            </article>
+            <article class="service-card">
+                <span class="service-card__icon"><i class="bi bi-bar-chart-line"></i></span>
+                <h3>Panel administrativo</h3>
+                <p>Indicadores de operacion, suscripciones y colegios organizados por ciudad.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-white" id="plataforma">
+    <div class="container">
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-6">
+                <img src="https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=professional+fleet+management+dashboard+mockup+on+tablet+clean+ui&image_size=landscape_4_3" class="img-fluid rounded shadow" alt="Dashboard">
+            </div>
+            <div class="col-lg-6">
+                <h2 class="fw-bold mb-4">Control total de su flota escolar</h2>
+                <div class="d-flex gap-3 mb-4">
+                    <div class="h2 text-warning fw-bold">01</div>
+                    <div>
+                        <h4 class="fw-bold">Rutas Optimizadas</h4>
+                        <p class="text-secondary">Gestión eficiente de recorridos para reducir tiempos y costos operativos.</p>
+                    </div>
+                </div>
+                <div class="d-flex gap-3 mb-4">
+                    <div class="h2 text-warning fw-bold">02</div>
+                    <div>
+                        <h4 class="fw-bold">Seguridad Estudiantil</h4>
+                        <p class="text-secondary">Control de asistencia y comunicación directa con padres de familia.</p>
+                    </div>
+                </div>
+                <div class="d-flex gap-3">
+                    <div class="h2 text-warning fw-bold">03</div>
+                    <div>
+                        <h4 class="fw-bold">Reportes en Tiempo Real</h4>
+                        <p class="text-secondary">Acceda a estadísticas y métricas de desempeño desde cualquier dispositivo.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-light" id="contacto">
+    <div class="container">
+        <div class="section-title">
+            <span>Contacto</span>
+            <h2>Hablemos de tu ruta escolar</h2>
+        </div>
+
+        <div class="contact-grid">
+            <div class="contact-info">
+                <div class="contact-info-item">
+                    <i class="bi bi-geo-alt"></i>
+                    <div>
+                        <strong>Ubicacion</strong>
+                        <span>{{ config.CONTACT_LOCATION }}</span>
+                    </div>
+                </div>
+                <div class="contact-info-item">
+                    <i class="bi bi-clock"></i>
+                    <div>
+                        <strong>Horario de atencion</strong>
+                        <span>{{ config.CONTACT_HOURS }}</span>
+                    </div>
+                </div>
+                {% if config.CONTACT_PHONE %}
+                <div class="contact-info-item">
+                    <i class="bi bi-telephone"></i>
+                    <div>
+                        <strong>Telefono</strong>
+                        <span><a href="tel:{{ config.CONTACT_PHONE }}">{{ config.CONTACT_PHONE }}</a></span>
+                    </div>
+                </div>
+                {% endif %}
+                {% if config.CONTACT_WHATSAPP %}
+                <div class="contact-info-item">
+                    <i class="bi bi-whatsapp"></i>
+                    <div>
+                        <strong>WhatsApp</strong>
+                        <span><a href="https://wa.me/{{ config.CONTACT_WHATSAPP }}" target="_blank" rel="noopener">{{ config.CONTACT_WHATSAPP }}</a></span>
+                    </div>
+                </div>
+                {% endif %}
+                {% if config.CONTACT_EMAIL %}
+                <div class="contact-info-item">
+                    <i class="bi bi-envelope"></i>
+                    <div>
+                        <strong>Correo</strong>
+                        <span><a href="mailto:{{ config.CONTACT_EMAIL }}">{{ config.CONTACT_EMAIL }}</a></span>
+                    </div>
+                </div>
+                {% endif %}
+                <p class="contact-info__note">Escribenos y el equipo de {{ config.APP_NAME }} te contactara para armar una propuesta para tu colegio o tu ruta.</p>
+            </div>
+
+            <div class="contact-panel">
+                <form method="post" action="{{ url_for('comercial_bp.contacto') }}" class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="contactoNombre">Nombre completo</label>
+                        <input class="form-control" id="contactoNombre" name="nombre" placeholder="Tu nombre" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="contactoTelefono">Telefono / WhatsApp</label>
+                        <input class="form-control" id="contactoTelefono" name="telefono" placeholder="300 000 0000">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="contactoEmail">Correo electronico</label>
+                        <input class="form-control" id="contactoEmail" type="email" name="email" placeholder="tucorreo@ejemplo.com">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="contactoAsunto">En que te podemos ayudar</label>
+                        <select class="form-select" id="contactoAsunto" name="asunto">
+                            <option value="Quiero una ruta para mi hijo">Quiero una ruta para mi hijo</option>
+                            <option value="Soy colegio o institucion">Soy colegio o institucion</option>
+                            <option value="Quiero trabajar como conductor">Quiero trabajar como conductor</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="contactoMensaje">Mensaje</label>
+                        <textarea class="form-control" id="contactoMensaje" name="mensaje" rows="4" placeholder="Cuentanos que necesitas" required></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary w-100" type="submit">Enviar mensaje</button>
+                        <p class="contact-panel__hint">Deja telefono o correo para poder responderte.</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-white">
+    <div class="container text-center">
+        <h2 class="fw-bold mb-4">¿Listo para modernizar su servicio?</h2>
+        <p class="text-secondary mb-5">Únase a los conductores y colegios que ya confían en nuestra tecnología.</p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="{{ url_for('comercial_bp.directorio') }}" class="btn btn-primary btn-lg px-5">Ver Directorio</a>
+            <a href="#contacto" class="btn btn-outline-dark btn-lg px-5">Contáctenos</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

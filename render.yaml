@@ -1,0 +1,22 @@
+# Blueprint de Render para probar "Ruta Confianza" en la nube.
+# Aviso: el disco de Render es efimero. La base de datos SQLite, las fotos
+# subidas y la carpeta de respaldos se reinician en cada despliegue o reinicio.
+# Si el repositorio no tiene este archivo en la raiz, ajusta la opcion
+# "Root Directory" del servicio a rutasescolares/ruta_exacta.
+services:
+  - type: web
+    name: ruta-confianza
+    runtime: python
+    plan: free
+    region: virginia
+    buildCommand: pip install -r requirements.txt
+    # Socket.IO corre en modo threading: un solo worker con varios hilos.
+    startCommand: gunicorn -w 1 --threads 100 --timeout 120 -b 0.0.0.0:$PORT run:app
+    autoDeployTrigger: commit
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SOCKETIO_ASYNC_MODE
+        value: threading

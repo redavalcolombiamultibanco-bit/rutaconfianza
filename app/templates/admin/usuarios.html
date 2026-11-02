@@ -1,0 +1,133 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Usuarios | Panel administrativo{% endblock %}
+{% block admin_eyebrow %}Seguridad y accesos{% endblock %}
+{% block admin_title %}Usuarios administrativos{% endblock %}
+{% block admin_content %}
+<p class="admin-section-intro">
+    Crea y administra las cuentas con acceso al panel interno. Usa contrasenas de al menos 8 caracteres.
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-people"></i></span>
+            <span class="metric-card__label">Usuarios totales</span>
+            <h2>{{ admin_users|length }}</h2>
+            <p>Cuentas administrativas creadas</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-person-check"></i></span>
+            <span class="metric-card__label">Usuarios activos</span>
+            <h2>{{ admin_users|selectattr("activo")|list|length }}</h2>
+            <p>Con acceso habilitado al panel</p>
+        </div>
+    </div>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-person-plus me-2"></i>Nuevo acceso administrativo</h2>
+            <p>Registra un usuario con permisos completos sobre el panel.</p>
+        </div>
+    </div>
+    <form method="post" action="{{ url_for('admin_bp.crear_usuario_admin') }}" class="row g-3">
+        <div class="col-md-4"><input class="form-control" name="nombre" placeholder="Nombre completo" required></div>
+        <div class="col-md-4"><input class="form-control" name="username" placeholder="Usuario de acceso" required></div>
+        <div class="col-md-4"><input class="form-control" type="password" name="password" placeholder="Contrasena" required></div>
+        <div class="col-md-6">
+            <input class="form-control" name="pregunta_seguridad" list="preguntasSeguridad" placeholder="Pregunta de seguridad (recuperacion)">
+        </div>
+        <div class="col-md-6">
+            <input class="form-control" type="password" name="respuesta_seguridad" placeholder="Respuesta de seguridad" autocomplete="off">
+        </div>
+        <div class="col-12">
+            <p class="admin-hint-text mb-0">
+                <i class="bi bi-info-circle me-1"></i>La pregunta y su respuesta permiten restablecer la contrasena desde el ingreso sin ayuda del administrador.
+            </p>
+        </div>
+        <div class="col-md-6">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="true" name="activo" id="nuevoUsuarioActivo" checked>
+                <label class="form-check-label" for="nuevoUsuarioActivo">Usuario activo</label>
+            </div>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <button class="btn btn-primary rounded-pill px-4" type="submit">Crear usuario</button>
+        </div>
+    </form>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-people me-2"></i>Usuarios del panel</h2>
+            <p>Edita datos, cambia contrasena o desactiva cuentas.</p>
+        </div>
+    </div>
+    <div class="d-grid gap-3">
+        {% for usuario in admin_users %}
+        <div class="attendance-item">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                <div>
+                    <strong>{{ usuario.nombre_mostrar }}</strong>
+                    <div class="small text-secondary">Usuario: {{ usuario.username }}</div>
+                    <div class="small text-secondary">
+                        {% if usuario.ultimo_acceso_en %}Ultimo acceso {{ usuario.ultimo_acceso_en.strftime("%Y-%m-%d %H:%M") }}{% else %}Sin accesos registrados{% endif %}
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-start">
+                    <span class="status-pill {% if usuario.activo %}status-pill--ok{% else %}status-pill--off{% endif %}">
+                        {{ "Activo" if usuario.activo else "Inactivo" }}
+                    </span>
+                    {% if admin_actual and admin_actual.id == usuario.id %}
+                    <span class="status-pill status-pill--warn">Sesion actual</span>
+                    {% endif %}
+                </div>
+            </div>
+            <details class="mt-3">
+                <summary class="small fw-semibold text-primary" style="cursor: pointer;">Editar usuario</summary>
+                <form method="post" action="{{ url_for('admin_bp.actualizar_usuario_admin', admin_user_id=usuario.id) }}" class="row g-3 mt-2">
+                    <div class="col-md-4"><input class="form-control" name="nombre" value="{{ usuario.nombre }}" placeholder="Nombre completo" required></div>
+                    <div class="col-md-4"><input class="form-control" name="username" value="{{ usuario.username }}" placeholder="Usuario de acceso" required></div>
+                    <div class="col-md-4"><input class="form-control" type="password" name="password" placeholder="Nueva contrasena (opcional)"></div>
+                    <div class="col-md-6">
+                        <input class="form-control" name="pregunta_seguridad" list="preguntasSeguridad" value="{{ usuario.pregunta_seguridad or '' }}" placeholder="Pregunta de seguridad (recuperacion)">
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control" type="password" name="respuesta_seguridad" placeholder="{% if usuario.tiene_recuperacion %}Nueva respuesta (opcional){% else %}Respuesta de seguridad{% endif %}" autocomplete="off">
+                    </div>
+                    <div class="col-12">
+                        <p class="admin-hint-text mb-0">
+                            <i class="bi bi-info-circle me-1"></i>{% if usuario.tiene_recuperacion %}Recuperacion activa. Escribe una respuesta solo si deseas cambiarla.{% else %}Sin recuperacion. Registra pregunta y respuesta para habilitarla.{% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="true" name="activo" id="usuarioActivo{{ usuario.id }}" {% if usuario.activo %}checked{% endif %}>
+                            <label class="form-check-label" for="usuarioActivo{{ usuario.id }}">Usuario activo</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-4" type="submit">Guardar cambios</button>
+                    </div>
+                </form>
+            </details>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3 class="h6">Sin usuarios administrativos</h3>
+            <p class="text-secondary mb-0">Crea al menos un usuario para acceder al panel.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<datalist id="preguntasSeguridad">
+    {% for pregunta in preguntas_seguridad %}
+    <option value="{{ pregunta }}"></option>
+    {% endfor %}
+</datalist>
+{% endblock %}

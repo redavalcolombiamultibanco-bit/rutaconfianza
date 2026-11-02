@@ -1,0 +1,617 @@
+{% extends "base.html" %}
+{% block title %}Panel administrativo | {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<section class="admin-dashboard py-4 py-xl-5">
+    <div class="container">
+        <div class="admin-hero mb-4 mb-xl-5">
+            <div class="admin-hero__content">
+                <span class="admin-eyebrow">Acceso interno</span>
+                <h1 class="fw-bold mb-2">Panel administrativo</h1>
+                <p class="admin-hero__text mb-0">Gestion centralizada de conductores, rutas, estudiantes y suscripciones desde un acceso interno mas claro y profesional.</p>
+            </div>
+            <div class="admin-hero__aside">
+                <div class="admin-hero__badge">
+                    <i class="bi bi-shield-check"></i>
+                    <div>
+                        <strong>Operacion activa</strong>
+                        <span>{{ metricas.suscripciones_activas }} suscripciones en servicio</span>
+                    </div>
+                </div>
+                <div class="admin-session-card mt-3">
+                    <div>
+                        <strong>{{ admin_actual.nombre_mostrar }}</strong>
+                        <span>{{ admin_actual.username }}</span>
+                    </div>
+                    <form method="post" action="{{ url_for('admin_bp.salir') }}">
+                        <button class="btn btn-sm btn-outline-light rounded-pill px-3" type="submit">Cerrar sesion</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="row g-4 mb-4 mb-xl-5">
+            <div class="col-sm-6 col-xl">
+                <div class="metric-card metric-card--highlight h-100">
+                    <span class="metric-card__label">Conductores</span>
+                    <h2>{{ metricas.conductores }}</h2>
+                    <p>Personal operativo registrado</p>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl">
+                <div class="metric-card h-100">
+                    <span class="metric-card__label">Rutas</span>
+                    <h2>{{ metricas.rutas }}</h2>
+                    <p>Trayectos configurados</p>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl">
+                <div class="metric-card h-100">
+                    <span class="metric-card__label">Estudiantes</span>
+                    <h2>{{ metricas.estudiantes }}</h2>
+                    <p>Usuarios matriculados</p>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl">
+                <div class="metric-card h-100">
+                    <span class="metric-card__label">Suscripciones</span>
+                    <h2>{{ metricas.suscripciones_activas }}</h2>
+                    <p>Cuentas con acceso activo</p>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl">
+                <div class="metric-card h-100">
+                    <span class="metric-card__label">Solicitudes</span>
+                    <h2>{{ metricas.solicitudes_pendientes }}</h2>
+                    <p>Pendientes por revisar</p>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl">
+                <div class="metric-card h-100">
+                    <span class="metric-card__label">Admins</span>
+                    <h2>{{ metricas.usuarios_admin }}</h2>
+                    <p>Accesos internos activos</p>
+                </div>
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-soft admin-card">
+                    <div class="card-body p-4">
+                        <div class="admin-section-heading mb-4">
+                            <div>
+                                <span class="admin-section-heading__eyebrow">Configuracion inicial</span>
+                                <h2 class="h4 mb-1">Registro rapido de operacion</h2>
+                                <p class="text-secondary mb-0">Crea conductores, habilita rutas y matricula estudiantes desde una sola pantalla.</p>
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-xl-4">
+                                <div class="admin-form-card h-100">
+                                <h2 class="h5 mb-1">Crear conductor</h2>
+                                <p class="admin-form-card__text">Registra la persona, el vehiculo y su estado comercial.</p>
+                                <form method="post" action="{{ url_for('admin_bp.crear_conductor') }}" class="row g-3 js-school-form">
+                                    <div class="col-md-6"><input class="form-control" name="nombres" placeholder="Nombres" required></div>
+                                    <div class="col-md-6"><input class="form-control" name="apellidos" placeholder="Apellidos" required></div>
+                                    <div class="col-md-6"><input class="form-control" name="documento" placeholder="Documento" required></div>
+                                    <div class="col-md-6"><input class="form-control" name="telefono" placeholder="Telefono" required></div>
+                                    <div class="col-12"><input class="form-control" type="email" name="email" placeholder="Correo electronico" required></div>
+                                    <div class="col-12"><input class="form-control" type="password" name="password" placeholder="Contraseña inicial (minimo 8 caracteres)" minlength="8" autocomplete="new-password" required></div>
+                                    <div class="col-md-8"><input class="form-control" name="nombre_vehiculo" placeholder="Vehiculo" required></div>
+                                    <div class="col-md-4"><input class="form-control" name="placa_vehiculo" placeholder="Placa" required></div>
+                                    <div class="col-md-4"><input class="form-control" type="number" min="1" name="capacidad_vehiculo" placeholder="Capacidad"></div>
+                                    <div class="col-md-4"><input class="form-control" name="color_vehiculo" placeholder="Color"></div>
+                                    <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                                    <div class="col-12"><textarea class="form-control" name="descripcion_publica" rows="2" placeholder="Descripcion para directorio"></textarea></div>
+                                    <div class="col-12"><input class="form-control" name="foto_url" placeholder="URL de foto opcional"></div>
+                                    <div class="col-md-6">
+                                        <select class="form-select" name="estado_suscripcion">
+                                            <option value="pendiente">Suscripcion pendiente</option>
+                                            <option value="activa">Suscripcion activa</option>
+                                            <option value="inactiva">Suscripcion inactiva</option>
+                                            <option value="suspendida">Suscripcion suspendida</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 d-flex flex-wrap gap-3 align-items-center">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="true" name="visible_en_directorio" id="visibleDirectorio">
+                                            <label class="form-check-label" for="visibleDirectorio">Visible en directorio</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="true" name="activo" id="conductorActivo" checked>
+                                            <label class="form-check-label" for="conductorActivo">Activo</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12"><button class="btn btn-primary rounded-pill px-4" type="submit">Guardar conductor</button></div>
+                                </form>
+                                </div>
+                            </div>
+                            <div class="col-xl-4">
+                                <div class="admin-form-card h-100">
+                                <h2 class="h5 mb-1">Crear ruta</h2>
+                                <p class="admin-form-card__text">Asocia un conductor, define el trayecto y prepara el acceso familiar.</p>
+                                <form method="post" action="{{ url_for('admin_bp.crear_ruta') }}" class="row g-3 js-school-form">
+                                    <div class="col-12">
+                                        <select class="form-select" name="conductor_id" required>
+                                            <option value="">Selecciona un conductor</option>
+                                            {% for conductor in conductores %}
+                                            <option value="{{ conductor.id }}">{{ conductor.nombre_completo }} · {{ conductor.placa_vehiculo }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-12"><input class="form-control" name="nombre" placeholder="Nombre de la ruta" required></div>
+                                    <div class="col-12"><input class="form-control js-city-input" name="ciudad" placeholder="Ciudad o municipio base de la ruta" list="municipiosCatalogo"></div>
+                                    <div class="col-md-6"><input class="form-control text-uppercase" name="codigo" placeholder="Codigo opcional"></div>
+                                    <div class="col-md-6"><input class="form-control text-uppercase" name="pin_acceso" placeholder="PIN opcional"></div>
+                                    <div class="col-12"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripcion operativa"></textarea></div>
+                                    <div class="col-md-6"><input class="form-control" name="origen" placeholder="Origen o punto de salida"></div>
+                                    <div class="col-md-6"><input class="form-control js-school-input" name="destino" placeholder="Destino o colegio principal" list="colegiosCatalogo"></div>
+                                    <div class="col-md-6"><input class="form-control" name="horario_salida" placeholder="Horario salida"></div>
+                                    <div class="col-md-6"><input class="form-control" name="horario_regreso" placeholder="Horario regreso"></div>
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="true" name="activa" id="rutaActiva" checked>
+                                            <label class="form-check-label" for="rutaActiva">Ruta activa</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12"><button class="btn btn-primary rounded-pill px-4" type="submit">Guardar ruta</button></div>
+                                </form>
+                                </div>
+                            </div>
+                            <div class="col-xl-4">
+                                <div class="admin-form-card h-100">
+                                <h2 class="h5 mb-1">Matricular estudiante</h2>
+                                <p class="admin-form-card__text">Vincula al estudiante con su ruta y con la informacion del acudiente.</p>
+                                <form method="post" action="{{ url_for('admin_bp.crear_estudiante') }}" class="row g-3 js-school-form">
+                                    <div class="col-12">
+                                        <select class="form-select" name="ruta_id" required>
+                                            <option value="">Selecciona una ruta</option>
+                                            {% for ruta in rutas %}
+                                            <option value="{{ ruta.id }}" {% if ruta_seleccionada and ruta.id == ruta_seleccionada.id %}selected{% endif %}>{{ ruta.nombre }} · PIN {{ ruta.pin_acceso }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6"><input class="form-control" name="nombres" placeholder="Nombres" required></div>
+                                    <div class="col-md-6"><input class="form-control" name="apellidos" placeholder="Apellidos" required></div>
+                                    <div class="col-md-6"><input class="form-control" name="documento" placeholder="Documento"></div>
+                                    <div class="col-md-6"><input class="form-control" name="grado" placeholder="Grado"></div>
+                                    <div class="col-12"><input class="form-control js-school-input" name="institucion" placeholder="Institucion educativa" list="colegiosCatalogo"></div>
+                                    <div class="col-12"><input class="form-control" name="direccion" placeholder="Direccion de recogida"></div>
+                                    <div class="col-md-4"><input class="form-control" name="barrio" placeholder="Barrio"></div>
+                                    <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" placeholder="Ciudad o municipio" list="municipiosCatalogo"></div>
+                                    <div class="col-md-4"><input class="form-control" type="number" min="1" name="orden_parada" placeholder="Orden parada"></div>
+                                    <div class="col-12"><input class="form-control" name="referencia_direccion" placeholder="Referencia de la direccion"></div>
+                                    <div class="col-12"><input class="form-control" name="acudiente_nombre" placeholder="Nombre del acudiente" required></div>
+                                    <div class="col-md-6"><input class="form-control" name="acudiente_telefono" placeholder="Telefono del acudiente" required></div>
+                                    <div class="col-md-6"><input class="form-control" type="email" name="acudiente_email" placeholder="Correo del acudiente"></div>
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="true" name="activo" id="estudianteActivo" checked>
+                                            <label class="form-check-label" for="estudianteActivo">Estudiante activo</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12"><button class="btn btn-primary rounded-pill px-4" type="submit">Guardar estudiante</button></div>
+                                </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-7">
+                <div class="card border-0 shadow-soft h-100 admin-card">
+                    <div class="card-body p-4">
+                        <div class="admin-section-heading admin-section-heading--compact mb-3">
+                            <div>
+                                <span class="admin-section-heading__eyebrow">Gestion comercial</span>
+                                <h2 class="h5 mb-1">Conductores y pagos</h2>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table align-middle admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Conductor</th>
+                                        <th>Vehiculo</th>
+                                        <th>Estado</th>
+                                        <th>Accion</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for conductor in conductores %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ conductor.nombre_completo }}</strong>
+                                            <div class="small text-secondary">{{ conductor.telefono }} · {{ conductor.email }}</div>
+                                        </td>
+                                        <td>{{ conductor.nombre_vehiculo }} · {{ conductor.placa_vehiculo }}</td>
+                                        <td><span class="badge text-bg-{% if conductor.estado_suscripcion.value == 'activa' %}success{% else %}secondary{% endif %}">{{ conductor.estado_suscripcion.value }}</span></td>
+                                        <td>
+                                            <form method="post" action="{{ url_for('admin_bp.actualizar_suscripcion', conductor_id=conductor.id) }}" class="d-flex gap-2 flex-wrap">
+                                                <select class="form-select form-select-sm" name="estado">
+                                                    <option value="activa" {% if conductor.estado_suscripcion.value == 'activa' %}selected{% endif %}>Activa</option>
+                                                    <option value="inactiva" {% if conductor.estado_suscripcion.value == 'inactiva' %}selected{% endif %}>Inactiva</option>
+                                                    <option value="vencida" {% if conductor.estado_suscripcion.value == 'vencida' %}selected{% endif %}>Vencida</option>
+                                                    <option value="suspendida" {% if conductor.estado_suscripcion.value == 'suspendida' %}selected{% endif %}>Suspendida</option>
+                                                </select>
+                                                <button class="btn btn-sm btn-primary rounded-pill px-3">Guardar</button>
+                                            </form>
+                                            <form method="post" action="{{ url_for('admin_bp.actualizar_credenciales_conductor', conductor_id=conductor.id) }}" class="d-flex gap-2 flex-wrap mt-2">
+                                                <input class="form-control form-control-sm" type="password" name="password" placeholder="Nueva contraseña (8+ caracteres)" minlength="8" autocomplete="new-password" required>
+                                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3">Asignar acceso</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-secondary">Aun no hay conductores registrados.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-5">
+                <div class="card border-0 shadow-soft h-100 admin-card">
+                    <div class="card-body p-4">
+                        <div class="admin-section-heading admin-section-heading--compact mb-3">
+                            <div>
+                                <span class="admin-section-heading__eyebrow">Monitoreo</span>
+                                <h2 class="h5 mb-1">Rutas activas</h2>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-3">
+                            {% for ruta in rutas %}
+                            <div class="route-list-item">
+                                <div class="d-flex justify-content-between gap-3">
+                                    <div>
+                                        <strong>{{ ruta.nombre }}</strong>
+                                        <div class="small text-secondary">{{ ruta.codigo }} · PIN {{ ruta.pin_acceso }}</div>
+                                    </div>
+                                    <span class="badge text-bg-{% if ruta.recorrido_activo %}success{% else %}secondary{% endif %} align-self-start">
+                                        {% if ruta.recorrido_activo %}En recorrido{% else %}En espera{% endif %}
+                                    </span>
+                                </div>
+                                <div class="small text-secondary mt-2">{{ ruta.ciudad or "Ciudad pendiente" }} · {{ ruta.origen or "Origen pendiente" }} → {{ ruta.destino or "Destino pendiente" }}</div>
+                                <div class="small text-secondary mt-2">Conductor: {{ ruta.conductor.nombre_completo if ruta.conductor else "Sin asignar" }}</div>
+                                <div class="small text-secondary mt-1">Paradas con direccion: {{ ruta.estudiantes | selectattr('direccion') | list | length }}</div>
+                                <div class="d-flex gap-2 mt-3">
+                                    <a class="btn btn-sm btn-outline-primary rounded-pill" href="{{ url_for('conductor_bp.ingresar') }}">Acceso conductores</a>
+                                    <a class="btn btn-sm btn-outline-secondary rounded-pill" href="{{ url_for('tracking_bp.sala_ruta', pin=ruta.pin_acceso) }}">Abrir portal padres</a>
+                                </div>
+                                <details class="mt-3">
+                                    <summary class="small fw-semibold text-primary" style="cursor: pointer;">Editar ruta</summary>
+                                    <form method="post" action="{{ url_for('admin_bp.actualizar_ruta', ruta_id=ruta.id) }}" class="row g-3 mt-2 js-school-form">
+                                        <div class="col-md-6">
+                                            <select class="form-select" name="conductor_id" required>
+                                                {% for conductor in conductores %}
+                                                <option value="{{ conductor.id }}" {% if ruta.conductor_id == conductor.id %}selected{% endif %}>{{ conductor.nombre_completo }} · {{ conductor.placa_vehiculo }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6"><input class="form-control" name="nombre" value="{{ ruta.nombre }}" placeholder="Nombre de la ruta" required></div>
+                                        <div class="col-md-4"><input class="form-control text-uppercase" name="codigo" value="{{ ruta.codigo }}" placeholder="Codigo"></div>
+                                        <div class="col-md-4"><input class="form-control text-uppercase" name="pin_acceso" value="{{ ruta.pin_acceso }}" placeholder="PIN"></div>
+                                        <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" value="{{ ruta.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                                        <div class="col-md-6"><input class="form-control" name="origen" value="{{ ruta.origen or '' }}" placeholder="Origen"></div>
+                                        <div class="col-md-6"><input class="form-control js-school-input" name="destino" value="{{ ruta.destino or '' }}" placeholder="Destino" list="colegiosCatalogo"></div>
+                                        <div class="col-md-6"><input class="form-control" name="horario_salida" value="{{ ruta.horario_salida or '' }}" placeholder="Horario salida"></div>
+                                        <div class="col-md-6"><input class="form-control" name="horario_regreso" value="{{ ruta.horario_regreso or '' }}" placeholder="Horario regreso"></div>
+                                        <div class="col-12"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripcion">{{ ruta.descripcion or '' }}</textarea></div>
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="true" name="activa" id="rutaActiva{{ ruta.id }}" {% if ruta.activa %}checked{% endif %}>
+                                                <label class="form-check-label" for="rutaActiva{{ ruta.id }}">Ruta activa</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 text-md-end">
+                                            <button class="btn btn-sm btn-primary rounded-pill px-4" type="submit">Guardar ruta</button>
+                                        </div>
+                                    </form>
+                                </details>
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <h3 class="h6">Sin rutas configuradas</h3>
+                                <p class="text-secondary mb-0">Cuando registres rutas, apareceran aqui con su PIN de acceso para las familias.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card border-0 shadow-soft h-100 admin-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="admin-section-heading__eyebrow d-block mb-1">Embudo comercial</span>
+                                <h2 class="h5 mb-0">Solicitudes de conductores</h2>
+                            </div>
+                            <span class="small text-secondary">{{ solicitudes|length }} registradas</span>
+                        </div>
+                        <div class="d-grid gap-3">
+                            {% for solicitud in solicitudes %}
+                            <div class="route-list-item">
+                                <div class="d-flex justify-content-between gap-3">
+                                    <div>
+                                        <strong>{{ solicitud.nombres }} {{ solicitud.apellidos }}</strong>
+                                        <div class="small text-secondary">{{ solicitud.telefono }} · {{ solicitud.email }}</div>
+                                        <div class="small text-secondary">{{ solicitud.nombre_vehiculo }} · {{ solicitud.placa_vehiculo }}</div>
+                                    </div>
+                                    <span class="badge text-bg-{% if solicitud.estado.value == 'pendiente' %}warning{% elif solicitud.estado.value == 'aprobada' %}success{% else %}secondary{% endif %}">
+                                        {{ solicitud.estado.value }}
+                                    </span>
+                                </div>
+                                {% if solicitud.comentario %}
+                                <p class="small text-secondary mt-2 mb-0">{{ solicitud.comentario }}</p>
+                                {% endif %}
+                                {% if solicitud.estado.value == 'pendiente' %}
+                                <div class="d-flex gap-2 mt-3">
+                                    <form method="post" action="{{ url_for('admin_bp.gestionar_solicitud', solicitud_id=solicitud.id) }}">
+                                        <input type="hidden" name="accion" value="aprobar">
+                                        <button class="btn btn-sm btn-success rounded-pill px-3" type="submit">Aprobar</button>
+                                    </form>
+                                    <form method="post" action="{{ url_for('admin_bp.gestionar_solicitud', solicitud_id=solicitud.id) }}">
+                                        <input type="hidden" name="accion" value="rechazar">
+                                        <button class="btn btn-sm btn-outline-danger rounded-pill px-3" type="submit">Rechazar</button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <h3 class="h6">Sin solicitudes nuevas</h3>
+                                <p class="text-secondary mb-0">Las solicitudes recibidas desde la landing apareceran aqui para gestionarlas.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card border-0 shadow-soft h-100 admin-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="admin-section-heading__eyebrow d-block mb-1">Operacion academica</span>
+                                <h2 class="h5 mb-0">Estudiantes por ruta</h2>
+                            </div>
+                            <span class="small text-secondary">{{ estudiantes|length }} matriculados</span>
+                        </div>
+                        {% if ruta_seleccionada %}
+                        <div class="mb-3">
+                            <form method="get" class="row g-2 align-items-center">
+                                <div class="col-sm-8">
+                                    <select class="form-select" name="ruta_id" onchange="this.form.submit()">
+                                        {% for ruta in rutas %}
+                                        <option value="{{ ruta.id }}" {% if ruta.id == ruta_seleccionada.id %}selected{% endif %}>{{ ruta.nombre }} · {{ ruta.codigo }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-sm-4">
+                                    <a class="btn btn-outline-primary w-100 rounded-pill" href="{{ url_for('conductor_bp.ingresar') }}">Acceso conductores</a>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="d-grid gap-3">
+                            {% for estudiante in estudiantes_ruta %}
+                            <div class="attendance-item">
+                                <div>
+                                    <strong>{{ estudiante.nombre_completo }}</strong>
+                                    <div class="small text-secondary">{{ estudiante.grado or "Sin grado" }} · {{ estudiante.institucion or "Sin institucion" }}</div>
+                                    <div class="small text-secondary">{{ estudiante.documento or "Documento pendiente" }} · {{ estudiante.acudiente_nombre }} · {{ estudiante.acudiente_telefono }}</div>
+                                    <div class="small text-secondary">
+                                        Parada {{ estudiante.orden_parada or "-" }} · {{ estudiante.direccion or "Direccion pendiente" }}
+                                        {% if estudiante.barrio %} · {{ estudiante.barrio }}{% endif %}
+                                    </div>
+                                    <div class="small text-secondary">
+                                        {% if estudiante.latitud is not none and estudiante.longitud is not none %}
+                                        Casita lista en mapa · {{ "%.5f"|format(estudiante.latitud) }}, {{ "%.5f"|format(estudiante.longitud) }}
+                                        {% else %}
+                                        Casita pendiente por georreferenciar
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <span class="badge text-bg-{% if estudiante.activo %}success{% else %}secondary{% endif %}">
+                                    {% if estudiante.activo %}Activo{% else %}Inactivo{% endif %}
+                                </span>
+                                <details class="w-100 mt-3">
+                                    <summary class="small fw-semibold text-primary" style="cursor: pointer;">Editar estudiante</summary>
+                                    <form method="post" action="{{ url_for('admin_bp.actualizar_estudiante', estudiante_id=estudiante.id) }}" class="row g-3 mt-2 js-school-form">
+                                        <div class="col-md-4"><input class="form-control" name="nombres" value="{{ estudiante.nombres }}" placeholder="Nombres" required></div>
+                                        <div class="col-md-4"><input class="form-control" name="apellidos" value="{{ estudiante.apellidos }}" placeholder="Apellidos" required></div>
+                                        <div class="col-md-4">
+                                            <select class="form-select" name="ruta_id" required>
+                                                {% for ruta in rutas %}
+                                                <option value="{{ ruta.id }}" {% if ruta.id == estudiante.ruta_id %}selected{% endif %}>{{ ruta.nombre }} · {{ ruta.codigo }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3"><input class="form-control" name="documento" value="{{ estudiante.documento or '' }}" placeholder="Documento"></div>
+                                        <div class="col-md-3"><input class="form-control" name="grado" value="{{ estudiante.grado or '' }}" placeholder="Grado"></div>
+                                        <div class="col-md-3"><input class="form-control" type="number" min="1" name="orden_parada" value="{{ estudiante.orden_parada or '' }}" placeholder="Orden"></div>
+                                        <div class="col-md-3"><input class="form-control js-city-input" name="ciudad" value="{{ estudiante.ciudad or ruta_seleccionada.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                                        <div class="col-12"><input class="form-control js-school-input" name="institucion" value="{{ estudiante.institucion or '' }}" placeholder="Institucion" list="colegiosCatalogo"></div>
+                                        <div class="col-12"><input class="form-control" name="direccion" value="{{ estudiante.direccion or '' }}" placeholder="Direccion"></div>
+                                        <div class="col-md-6"><input class="form-control" name="barrio" value="{{ estudiante.barrio or '' }}" placeholder="Barrio"></div>
+                                        <div class="col-md-6"><input class="form-control" name="referencia_direccion" value="{{ estudiante.referencia_direccion or '' }}" placeholder="Referencia"></div>
+                                        <div class="col-md-4"><input class="form-control" name="acudiente_nombre" value="{{ estudiante.acudiente_nombre }}" placeholder="Acudiente" required></div>
+                                        <div class="col-md-4"><input class="form-control" name="acudiente_telefono" value="{{ estudiante.acudiente_telefono }}" placeholder="Telefono" required></div>
+                                        <div class="col-md-4"><input class="form-control" type="email" name="acudiente_email" value="{{ estudiante.acudiente_email or '' }}" placeholder="Correo"></div>
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="true" name="activo" id="estudianteActivo{{ estudiante.id }}" {% if estudiante.activo %}checked{% endif %}>
+                                                <label class="form-check-label" for="estudianteActivo{{ estudiante.id }}">Estudiante activo</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 text-md-end d-flex justify-content-md-end gap-2 flex-wrap">
+                                            <button class="btn btn-sm btn-outline-danger rounded-pill px-4" type="submit" formaction="{{ url_for('admin_bp.eliminar_estudiante', estudiante_id=estudiante.id) }}" formnovalidate onclick="return confirm('¿Deseas eliminar este estudiante de la ruta?');">Eliminar</button>
+                                            <button class="btn btn-sm btn-outline-primary rounded-pill px-4" type="submit">Guardar estudiante</button>
+                                        </div>
+                                    </form>
+                                </details>
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <h3 class="h6">Sin estudiantes en esta ruta</h3>
+                                <p class="text-secondary mb-0">Matricula estudiantes para habilitar asistencia y seguimiento familiar.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <h3 class="h6">Todavia no hay rutas creadas</h3>
+                            <p class="text-secondary mb-0">Primero registra al menos una ruta para asociar estudiantes y abrir la operacion.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card border-0 shadow-soft admin-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="admin-section-heading__eyebrow d-block mb-1">Contacto</span>
+                                <h2 class="h5 mb-0">Mensajes desde la landing</h2>
+                            </div>
+                            <span class="small text-secondary">{{ metricas.mensajes_contacto_nuevos }} sin atender</span>
+                        </div>
+                        <div class="d-grid gap-3">
+                            {% for mensaje in mensajes_contacto %}
+                            <div class="route-list-item">
+                                <div class="d-flex justify-content-between gap-3">
+                                    <div>
+                                        <strong>{{ mensaje.nombre }}</strong>
+                                        <div class="small text-secondary">{{ mensaje.telefono or "Sin telefono" }} · {{ mensaje.email or "Sin correo" }}</div>
+                                        <div class="small text-secondary">{{ mensaje.asunto or "Sin asunto" }} · {{ mensaje.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+                                    </div>
+                                    <span class="badge text-bg-{% if mensaje.atendido %}success{% else %}warning{% endif %}">{{ "Atendido" if mensaje.atendido else "Nuevo" }}</span>
+                                </div>
+                                <p class="small text-secondary mt-2 mb-0">{{ mensaje.mensaje }}</p>
+                                {% if not mensaje.atendido %}
+                                <form method="post" action="{{ url_for('admin_bp.marcar_mensaje_atendido', mensaje_id=mensaje.id) }}" class="mt-3">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="submit">Marcar como atendido</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <h3 class="h6">Sin mensajes de contacto</h3>
+                                <p class="text-secondary mb-0">Los mensajes enviados desde el formulario de la landing apareceran aqui.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card border-0 shadow-soft admin-card">
+                    <div class="card-body p-4">
+                        <div class="admin-section-heading mb-4">
+                            <div>
+                                <span class="admin-section-heading__eyebrow">Seguridad</span>
+                                <h2 class="h4 mb-1">Usuarios administrativos</h2>
+                                <p class="text-secondary mb-0">Crea nuevos accesos al panel y actualiza las credenciales internas desde una sola vista.</p>
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-xl-4">
+                                <div class="admin-form-card h-100">
+                                    <h2 class="h5 mb-1">Crear acceso</h2>
+                                    <p class="admin-form-card__text">Registra un nuevo usuario con permiso para entrar al panel administrativo.</p>
+                                    <form method="post" action="{{ url_for('admin_bp.crear_usuario_admin') }}" class="row g-3">
+                                        <div class="col-12">
+                                            <input class="form-control" name="nombre" placeholder="Nombre del administrador" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <input class="form-control" name="username" placeholder="Usuario de ingreso" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <input class="form-control" type="password" name="password" placeholder="Contraseña inicial (minimo 8 caracteres)" minlength="8" autocomplete="new-password" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="true" name="activo" id="adminActivoNuevo" checked>
+                                                <label class="form-check-label" for="adminActivoNuevo">Acceso activo</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <button class="btn btn-primary rounded-pill px-4" type="submit">Crear usuario</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="col-xl-8">
+                                <div class="d-grid gap-3">
+                                    {% for usuario in admin_users %}
+                                    <div class="route-list-item admin-user-item">
+                                        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-3">
+                                            <div>
+                                                <strong>{{ usuario.nombre_mostrar }}</strong>
+                                                <div class="small text-secondary">Usuario: {{ usuario.username }}</div>
+                                                <div class="small text-secondary">Ultimo acceso: {{ usuario.ultimo_acceso_en.strftime('%Y-%m-%d %H:%M') if usuario.ultimo_acceso_en else 'Aun no registra ingresos' }}</div>
+                                            </div>
+                                            <span class="badge text-bg-{% if usuario.activo %}success{% else %}secondary{% endif %} align-self-start">
+                                                {% if usuario.activo %}Activo{% else %}Inactivo{% endif %}
+                                            </span>
+                                        </div>
+                                        <form method="post" action="{{ url_for('admin_bp.actualizar_usuario_admin', admin_user_id=usuario.id) }}" class="row g-3">
+                                            <div class="col-md-4">
+                                                <input class="form-control" name="nombre" value="{{ usuario.nombre }}" placeholder="Nombre" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <input class="form-control" name="username" value="{{ usuario.username }}" placeholder="Usuario" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <input class="form-control" type="password" name="password" placeholder="Nueva contraseña">
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-center">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" value="true" name="activo" id="adminActivo{{ usuario.id }}" {% if usuario.activo %}checked{% endif %}>
+                                                    <label class="form-check-label" for="adminActivo{{ usuario.id }}">Activo</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                                                <small class="text-secondary">
+                                                    {% if admin_actual.id == usuario.id %}
+                                                    Sesion actual en uso.
+                                                    {% else %}
+                                                    Deja la contraseña vacia si no deseas cambiarla.
+                                                    {% endif %}
+                                                </small>
+                                                <button class="btn btn-outline-primary rounded-pill px-4" type="submit">Guardar cambios</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    {% else %}
+                                    <div class="empty-state">
+                                        <h3 class="h6">Sin usuarios administrativos</h3>
+                                        <p class="text-secondary mb-0">Crea al menos un acceso interno para proteger el panel.</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<datalist id="municipiosCatalogo">
+    {% for municipio in municipios_catalogo %}
+    <option value="{{ municipio }}"></option>
+    {% endfor %}
+</datalist>
+<datalist id="colegiosCatalogo">
+    {% for municipio, colegios in colegios_catalogo.items() %}
+        {% for colegio in colegios %}
+    <option value="{{ colegio }}" data-city="{{ municipio }}"></option>
+        {% endfor %}
+    {% endfor %}
+</datalist>
+<script id="schoolCatalogData" type="application/json">{{ colegios_catalogo|tojson }}</script>
+{% endblock %}

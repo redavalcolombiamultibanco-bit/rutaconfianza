@@ -1,0 +1,233 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Rutas | Panel administrativo{% endblock %}
+{% block admin_eyebrow %}Operacion{% endblock %}
+{% block admin_title %}Rutas y trazados{% endblock %}
+{% block admin_content %}
+<p class="admin-section-intro">
+    Crea rutas, asigna el conductor responsable y revisa el PIN que usaran las familias para el seguimiento en vivo.
+</p>
+
+{% if ruta_seleccionada and map_payload %}
+{% set centro_lat = ruta_seleccionada.latitud_actual if ruta_seleccionada.latitud_actual is not none else (ruta_seleccionada.origen_latitud if ruta_seleccionada.origen_latitud is not none else config.MAP_DEFAULT_LAT) %}
+{% set centro_lng = ruta_seleccionada.longitud_actual if ruta_seleccionada.longitud_actual is not none else (ruta_seleccionada.origen_longitud if ruta_seleccionada.origen_longitud is not none else config.MAP_DEFAULT_LNG) %}
+<div class="admin-panel admin-panel--map">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-broadcast-pin me-2"></i>Seguimiento en vivo</h2>
+            <p>Ubicacion y trazado de la ruta seleccionada.</p>
+        </div>
+        <div class="admin-map__selector">
+            <label class="form-label small text-secondary mb-1" for="adminRouteSelector">Ruta a visualizar</label>
+            <select class="form-select form-select-sm" id="adminRouteSelector">
+                {% for ruta in rutas %}
+                <option value="{{ ruta.id }}" {% if ruta.id == ruta_seleccionada.id %}selected{% endif %}>{{ ruta.nombre }} · {{ ruta.codigo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="admin-map__grid">
+        <div class="admin-map__canvas">
+            <div
+                id="adminRouteMap"
+                class="admin-map"
+                data-ruta-id="{{ ruta_seleccionada.id }}"
+                data-pin="{{ ruta_seleccionada.pin_acceso }}"
+                data-lat="{{ centro_lat }}"
+                data-lng="{{ centro_lng }}"
+                data-zoom="{{ config.MAP_DEFAULT_ZOOM }}"
+                data-has-location="{{ 'true' if ruta_seleccionada.latitud_actual is not none else 'false' }}"
+            ></div>
+            <button
+                class="btn btn-light btn-sm rounded-pill shadow-sm js-map-center"
+                type="button"
+                data-map-target="adminRouteMap"
+                disabled
+            >
+                <i class="bi bi-crosshair me-1"></i>Centrar vehiculo
+            </button>
+        </div>
+
+        <aside class="admin-map__side">
+            <div class="admin-map__stat">
+                <span class="admin-map__stat-label">Estado del recorrido</span>
+                <span class="status-pill {% if ruta_seleccionada.recorrido_activo %}status-pill--ok{% else %}status-pill--off{% endif %}" id="adminRouteState">
+                    {{ "En recorrido" if ruta_seleccionada.recorrido_activo else "En espera" }}
+                </span>
+            </div>
+            <div class="admin-map__stat">
+                <span class="admin-map__stat-label">Conductor</span>
+                <span class="admin-map__stat-value">{{ ruta_seleccionada.conductor.nombre_completo if ruta_seleccionada.conductor else "Sin asignar" }}</span>
+            </div>
+            <div class="admin-map__stat">
+                <span class="admin-map__stat-label">Vehiculo</span>
+                <span class="admin-map__stat-value">
+                    {{ ruta_seleccionada.conductor.nombre_vehiculo if ruta_seleccionada.conductor else "Sin vehiculo" }}
+                    {% if ruta_seleccionada.conductor %} · {{ ruta_seleccionada.conductor.placa_vehiculo }}{% endif %}
+                </span>
+            </div>
+            <div class="admin-map__stat">
+                <span class="admin-map__stat-label">Ultima actualizacion</span>
+                <span class="admin-map__stat-value" id="adminRouteUpdatedAt">
+                    {{ ruta_seleccionada.ultima_ubicacion_en.strftime("%d/%m/%Y %I:%M %p") if ruta_seleccionada.ultima_ubicacion_en else "Sin datos" }}
+                </span>
+            </div>
+            <div class="admin-map__stat">
+                <span class="admin-map__stat-label">Coordenadas</span>
+                <span class="admin-map__stat-value" id="adminRouteCoordinates">
+                    {% if ruta_seleccionada.latitud_actual is not none %}
+                    {{ "%.5f"|format(ruta_seleccionada.latitud_actual) }}, {{ "%.5f"|format(ruta_seleccionada.longitud_actual) }}
+                    {% else %}Sin transmision{% endif %}
+                </span>
+            </div>
+            <div class="admin-map__stat">
+                <span class="admin-map__stat-label">Paradas geolocalizadas</span>
+                <span class="admin-map__stat-value">{{ map_payload.plan.paradas|selectattr("latitud")|list|length }} de {{ map_payload.plan.paradas|length }}</span>
+            </div>
+            <a class="btn btn-sm btn-outline-primary rounded-pill w-100" href="{{ url_for('tracking_bp.sala_ruta', pin=ruta_seleccionada.pin_acceso) }}" target="_blank" rel="noopener">
+                <i class="bi bi-box-arrow-up-right me-1"></i>Abrir portal de familias
+            </a>
+        </aside>
+    </div>
+
+    <script id="adminRoutePlanData" type="application/json">{{ map_payload.plan|tojson }}</script>
+    <script id="adminRouteHistoryData" type="application/json">{{ map_payload.puntos|tojson }}</script>
+    <script id="adminRouteTrackingData" type="application/json">{{ map_payload.tracking|tojson }}</script>
+</div>
+{% elif not rutas %}
+<div class="admin-panel">
+    <div class="empty-state">
+        <h3 class="h6">Aun no hay rutas con mapa</h3>
+        <p class="text-secondary mb-0">Crea la primera ruta abajo para habilitar el seguimiento en el mapa.</p>
+    </div>
+</div>
+{% endif %}
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-signpost-plus me-2"></i>Crear ruta</h2>
+            <p>Asocia un conductor, define el trayecto y prepara el acceso familiar.</p>
+        </div>
+    </div>
+    <form method="post" action="{{ url_for('admin_bp.crear_ruta') }}" class="row g-3 js-school-form">
+        <div class="col-md-6">
+            <select class="form-select" name="conductor_id" required>
+                <option value="">Selecciona un conductor</option>
+                {% for conductor in conductores %}
+                <option value="{{ conductor.id }}">{{ conductor.nombre_completo }} · {{ conductor.placa_vehiculo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6"><input class="form-control" name="nombre" placeholder="Nombre de la ruta" required></div>
+        <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" placeholder="Ciudad o municipio base" list="municipiosCatalogo"></div>
+        <div class="col-md-4"><input class="form-control text-uppercase" name="codigo" placeholder="Codigo opcional"></div>
+        <div class="col-md-4"><input class="form-control text-uppercase" name="pin_acceso" placeholder="PIN opcional"></div>
+        <div class="col-md-6"><input class="form-control" name="origen" placeholder="Origen o punto de salida"></div>
+        <div class="col-md-6"><input class="form-control js-school-input" name="destino" placeholder="Destino o colegio principal" list="colegiosCatalogo"></div>
+        <div class="col-md-3"><input class="form-control" name="horario_salida" placeholder="Horario salida"></div>
+        <div class="col-md-3"><input class="form-control" name="horario_regreso" placeholder="Horario regreso"></div>
+        <div class="col-md-6"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripcion operativa"></textarea></div>
+        <div class="col-md-6 d-flex align-items-center">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="true" name="activa" id="rutaActiva" checked>
+                <label class="form-check-label" for="rutaActiva">Ruta activa</label>
+            </div>
+        </div>
+        <div class="col-12 text-md-end">
+            <button class="btn btn-primary rounded-pill px-4" type="submit">Guardar ruta</button>
+        </div>
+    </form>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-map me-2"></i>Rutas registradas</h2>
+            <p>{{ rutas|length }} rutas configuradas.</p>
+        </div>
+    </div>
+    <div class="d-grid gap-3">
+        {% for ruta in rutas %}
+        <div class="route-list-item">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                <div>
+                    <strong>{{ ruta.nombre }}</strong>
+                    <div class="small text-secondary">{{ ruta.codigo }} · PIN <span class="fw-semibold">{{ ruta.pin_acceso }}</span> · {{ ruta.ciudad or "Sin ciudad" }}</div>
+                    <div class="small text-secondary">{{ ruta.origen or "Origen pendiente" }} → {{ ruta.destino or "Destino pendiente" }}</div>
+                    <div class="small text-secondary">Conductor: {{ ruta.conductor.nombre_completo if ruta.conductor else "Sin asignar" }} · {{ ruta.estudiantes|length }} estudiante(s)</div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-start">
+                    <span class="status-pill {% if ruta.recorrido_activo %}status-pill--ok{% else %}status-pill--off{% endif %}">
+                        {% if ruta.recorrido_activo %}En recorrido{% else %}En espera{% endif %}
+                    </span>
+                    <span class="status-pill {% if ruta.activa %}status-pill--ok{% else %}status-pill--danger{% endif %}">
+                        {{ "Activa" if ruta.activa else "Inactiva" }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <a class="btn btn-sm btn-outline-primary rounded-pill" href="{{ url_for('admin_bp.estudiantes', ruta_id=ruta.id) }}">Ver estudiantes</a>
+                <a class="btn btn-sm btn-outline-secondary rounded-pill" href="{{ url_for('tracking_bp.sala_ruta', pin=ruta.pin_acceso) }}" target="_blank" rel="noopener">Portal familias</a>
+                <form method="post" action="{{ url_for('admin_bp.eliminar_ruta', ruta_id=ruta.id) }}" onsubmit="return confirm('Se eliminaran los estudiantes y sus asistencias. ¿Continuar?');">
+                    <button class="btn btn-sm btn-outline-danger rounded-pill" type="submit">Eliminar</button>
+                </form>
+            </div>
+
+            <details class="mt-3">
+                <summary class="small fw-semibold text-primary" style="cursor: pointer;">Editar ruta</summary>
+                <form method="post" action="{{ url_for('admin_bp.actualizar_ruta', ruta_id=ruta.id) }}" class="row g-3 mt-2 js-school-form">
+                    <div class="col-md-6">
+                        <select class="form-select" name="conductor_id" required>
+                            {% for conductor in conductores %}
+                            <option value="{{ conductor.id }}" {% if ruta.conductor_id == conductor.id %}selected{% endif %}>{{ conductor.nombre_completo }} · {{ conductor.placa_vehiculo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6"><input class="form-control" name="nombre" value="{{ ruta.nombre }}" placeholder="Nombre de la ruta" required></div>
+                    <div class="col-md-4"><input class="form-control text-uppercase" name="codigo" value="{{ ruta.codigo }}" placeholder="Codigo"></div>
+                    <div class="col-md-4"><input class="form-control text-uppercase" name="pin_acceso" value="{{ ruta.pin_acceso }}" placeholder="PIN"></div>
+                    <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" value="{{ ruta.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                    <div class="col-md-6"><input class="form-control" name="origen" value="{{ ruta.origen or '' }}" placeholder="Origen"></div>
+                    <div class="col-md-6"><input class="form-control js-school-input" name="destino" value="{{ ruta.destino or '' }}" placeholder="Destino" list="colegiosCatalogo"></div>
+                    <div class="col-md-6"><input class="form-control" name="horario_salida" value="{{ ruta.horario_salida or '' }}" placeholder="Horario salida"></div>
+                    <div class="col-md-6"><input class="form-control" name="horario_regreso" value="{{ ruta.horario_regreso or '' }}" placeholder="Horario regreso"></div>
+                    <div class="col-12"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripcion">{{ ruta.descripcion or '' }}</textarea></div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="true" name="activa" id="rutaActiva{{ ruta.id }}" {% if ruta.activa %}checked{% endif %}>
+                            <label class="form-check-label" for="rutaActiva{{ ruta.id }}">Ruta activa</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <button class="btn btn-sm btn-primary rounded-pill px-4" type="submit">Guardar ruta</button>
+                    </div>
+                </form>
+            </details>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3 class="h6">Sin rutas configuradas</h3>
+            <p class="text-secondary mb-0">Crea la primera ruta con el formulario de arriba.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<datalist id="municipiosCatalogo">
+    {% for municipio in municipios_catalogo %}
+    <option value="{{ municipio }}"></option>
+    {% endfor %}
+</datalist>
+<datalist id="colegiosCatalogo">
+    {% for municipio, colegios in colegios_catalogo.items() %}
+        {% for colegio in colegios %}
+    <option value="{{ colegio }}" data-city="{{ municipio }}"></option>
+        {% endfor %}
+    {% endfor %}
+</datalist>
+<script id="schoolCatalogData" type="application/json">{{ colegios_catalogo|tojson }}</script>
+{% endblock %}

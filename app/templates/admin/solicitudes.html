@@ -1,0 +1,84 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Solicitudes | Panel administrativo{% endblock %}
+{% block admin_eyebrow %}Ingreso de conductores{% endblock %}
+{% block admin_title %}Solicitudes de vinculacion{% endblock %}
+{% block admin_content %}
+<p class="admin-section-intro">
+    Revisa las solicitudes enviadas por conductores interesados y aprueba o rechaza su vinculacion a la plataforma.
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-inbox"></i></span>
+            <span class="metric-card__label">Solicitudes totales</span>
+            <h2>{{ solicitudes|length }}</h2>
+            <p>Recibidas desde el formulario publico</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-hourglass-split"></i></span>
+            <span class="metric-card__label">Pendientes de revision</span>
+            <h2>{{ total_pendientes }}</h2>
+            <p>Requieren aprobacion o rechazo</p>
+        </div>
+    </div>
+</div>
+
+<div class="admin-panel">
+    <div class="admin-panel__heading">
+        <div>
+            <h2><i class="bi bi-inbox me-2"></i>Bandeja de solicitudes</h2>
+            <p>Ordenadas de la mas reciente a la mas antigua.</p>
+        </div>
+    </div>
+    <div class="d-grid gap-3">
+        {% for solicitud in solicitudes %}
+        <div class="attendance-item">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                <div>
+                    <strong>{{ solicitud.nombres }} {{ solicitud.apellidos }}</strong>
+                    <div class="small text-secondary">{{ solicitud.telefono }} · {{ solicitud.email }}</div>
+                    <div class="small text-secondary">
+                        Vehiculo {{ solicitud.nombre_vehiculo }} · Placa {{ solicitud.placa_vehiculo }}
+                        {% if solicitud.capacidad_vehiculo %} · {{ solicitud.capacidad_vehiculo }} puestos{% endif %}
+                    </div>
+                    <div class="small text-secondary">
+                        {{ solicitud.ciudad or "Ciudad sin definir" }} · Recibida el {{ solicitud.created_at.strftime("%Y-%m-%d %H:%M") }}
+                    </div>
+                    {% if solicitud.comentario %}
+                    <div class="small text-secondary fst-italic mt-1">"{{ solicitud.comentario }}"</div>
+                    {% endif %}
+                </div>
+                <div class="d-flex flex-column align-items-lg-end gap-2">
+                    <span class="status-pill {% if solicitud.estado.value == 'aprobada' %}status-pill--ok{% elif solicitud.estado.value == 'rechazada' %}status-pill--danger{% else %}status-pill--warn{% endif %}">
+                        {{ solicitud.estado.value|capitalize }}
+                    </span>
+                    {% if solicitud.revisado_en %}
+                    <span class="small text-secondary">Revisada {{ solicitud.revisado_en.strftime("%Y-%m-%d %H:%M") }}</span>
+                    {% endif %}
+                    {% if solicitud.estado.value == 'pendiente' %}
+                    <div class="d-flex gap-2">
+                        <form method="post" action="{{ url_for('admin_bp.gestionar_solicitud', solicitud_id=solicitud.id) }}">
+                            <input type="hidden" name="accion" value="aprobar">
+                            <button class="btn btn-sm btn-primary rounded-pill px-3" type="submit">Aprobar</button>
+                        </form>
+                        <form method="post" action="{{ url_for('admin_bp.gestionar_solicitud', solicitud_id=solicitud.id) }}">
+                            <input type="hidden" name="accion" value="rechazar">
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-3" type="submit" onclick="return confirm('¿Deseas rechazar esta solicitud?');">Rechazar</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3 class="h6">Sin solicitudes registradas</h3>
+            <p class="text-secondary mb-0">Cuando un conductor envie su solicitud aparecera en esta bandeja.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

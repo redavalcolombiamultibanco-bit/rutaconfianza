@@ -1,0 +1,222 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Resumen | Panel administrativo{% endblock %}
+{% block admin_eyebrow %}Vista general{% endblock %}
+{% block admin_title %}Resumen de la operacion{% endblock %}
+{% block admin_content %}
+<p class="admin-section-intro">
+    Indicadores generales de Ruta Confianza: conductores, rutas, estudiantes, suscripciones y actividad del dia.
+</p>
+
+<div class="row g-3 g-xl-4 mb-4">
+    <div class="col-sm-6 col-xl-4">
+        <div class="metric-card metric-card--highlight h-100">
+            <span class="metric-card__icon"><i class="bi bi-person-badge"></i></span>
+            <span class="metric-card__label">Conductores</span>
+            <h2>{{ metricas.conductores }}</h2>
+            <p>{{ metricas.suscripciones_activas }} con suscripcion activa</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-signpost-split"></i></span>
+            <span class="metric-card__label">Rutas</span>
+            <h2>{{ metricas.rutas }}</h2>
+            <p>{{ rutas_activas|length }} en recorrido ahora</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-mortarboard"></i></span>
+            <span class="metric-card__label">Estudiantes</span>
+            <h2>{{ metricas.estudiantes }}</h2>
+            <p>Matriculados en las rutas</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-inbox"></i></span>
+            <span class="metric-card__label">Solicitudes pendientes</span>
+            <h2>{{ metricas.solicitudes_pendientes }}</h2>
+            <p>Conductores por revisar</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-envelope-paper"></i></span>
+            <span class="metric-card__label">Mensajes nuevos</span>
+            <h2>{{ metricas.mensajes_contacto_nuevos }}</h2>
+            <p>Sin atender desde la landing</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="metric-card h-100">
+            <span class="metric-card__icon"><i class="bi bi-people"></i></span>
+            <span class="metric-card__label">Admins activos</span>
+            <h2>{{ metricas.usuarios_admin }}</h2>
+            <p>Accesos internos vigentes</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-4">
+        <div class="chart-card">
+            <h3>Suscripciones por estado</h3>
+            <div class="chart-canvas-wrap"><canvas id="graficaSuscripciones"></canvas></div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="chart-card">
+            <h3>Estudiantes por ruta</h3>
+            <div class="chart-canvas-wrap"><canvas id="graficaEstudiantes"></canvas></div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="chart-card">
+            <h3>Asistencias de hoy</h3>
+            <div class="chart-canvas-wrap"><canvas id="graficaAsistencias"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <div class="admin-panel h-100">
+            <div class="admin-panel__heading">
+                <div>
+                    <h2><i class="bi bi-inbox me-2"></i>Solicitudes pendientes</h2>
+                    <p>Ultimas solicitudes de conductores.</p>
+                </div>
+                <a class="btn btn-sm btn-outline-primary rounded-pill" href="{{ url_for('admin_bp.solicitudes') }}">Ver todas</a>
+            </div>
+            <div class="d-grid gap-3">
+                {% for solicitud in solicitudes_pendientes %}
+                <div class="route-list-item">
+                    <strong>{{ solicitud.nombres }} {{ solicitud.apellidos }}</strong>
+                    <div class="small text-secondary">{{ solicitud.telefono }} · {{ solicitud.placa_vehiculo }}</div>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <h3 class="h6">Sin solicitudes pendientes</h3>
+                    <p class="text-secondary mb-0">Todo el embudo comercial esta al dia.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="admin-panel h-100">
+            <div class="admin-panel__heading">
+                <div>
+                    <h2><i class="bi bi-signpost-split me-2"></i>Rutas en recorrido</h2>
+                    <p>Seguimiento en vivo ahora mismo.</p>
+                </div>
+                <a class="btn btn-sm btn-outline-primary rounded-pill" href="{{ url_for('admin_bp.rutas') }}">Gestionar</a>
+            </div>
+            <div class="d-grid gap-3">
+                {% for ruta in rutas_activas %}
+                <div class="route-list-item">
+                    <div class="d-flex justify-content-between gap-2">
+                        <strong>{{ ruta.nombre }}</strong>
+                        <span class="status-pill status-pill--ok">Activa</span>
+                    </div>
+                    <div class="small text-secondary mt-1">{{ ruta.conductor.nombre_completo if ruta.conductor else "Sin conductor" }}</div>
+                    <a class="small fw-semibold text-primary" href="{{ url_for('tracking_bp.sala_ruta', pin=ruta.pin_acceso) }}" target="_blank" rel="noopener">Abrir portal familias</a>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <h3 class="h6">Ninguna ruta en recorrido</h3>
+                    <p class="text-secondary mb-0">Cuando un conductor inicie su ruta aparecera aqui.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="admin-panel h-100">
+            <div class="admin-panel__heading">
+                <div>
+                    <h2><i class="bi bi-envelope-paper me-2"></i>Mensajes recientes</h2>
+                    <p>Consultas desde la pagina principal.</p>
+                </div>
+                <a class="btn btn-sm btn-outline-primary rounded-pill" href="{{ url_for('admin_bp.mensajes') }}">Ver todos</a>
+            </div>
+            <div class="d-grid gap-3">
+                {% for mensaje in mensajes_recientes %}
+                <div class="route-list-item">
+                    <div class="d-flex justify-content-between gap-2">
+                        <strong>{{ mensaje.nombre }}</strong>
+                        <span class="status-pill {% if mensaje.atendido %}status-pill--ok{% else %}status-pill--warn{% endif %}">
+                            {{ "Atendido" if mensaje.atendido else "Nuevo" }}
+                        </span>
+                    </div>
+                    <div class="small text-secondary mt-1">{{ mensaje.asunto or "Sin asunto" }}</div>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <h3 class="h6">Sin mensajes</h3>
+                    <p class="text-secondary mb-0">Aqui apareceran las consultas de la landing.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="datosEstadisticas" type="application/json">{{ estadisticas|tojson }}</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const datos = JSON.parse(document.getElementById("datosEstadisticas").textContent);
+    if (typeof Chart === "undefined") return;
+
+    const paleta = ["#1d4ed8", "#0ea5e9", "#facc15", "#16a34a", "#dc2626", "#7c3aed"];
+
+    const suscripciones = datos.suscripciones_por_estado || {};
+    const asistencias = datos.asistencias_hoy || {};
+    const estudiantes = datos.estudiantes_por_ruta || [];
+
+    const formatear = (valor) => String(valor).charAt(0).toUpperCase() + String(valor).slice(1).replace("_", " ");
+
+    new Chart(document.getElementById("graficaSuscripciones"), {
+        type: "doughnut",
+        data: {
+            labels: Object.keys(suscripciones).map(formatear),
+            datasets: [{ data: Object.values(suscripciones), backgroundColor: paleta, borderWidth: 0 }],
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } },
+    });
+
+    new Chart(document.getElementById("graficaEstudiantes"), {
+        type: "bar",
+        data: {
+            labels: estudiantes.map((item) => item.etiqueta),
+            datasets: [{ label: "Estudiantes", data: estudiantes.map((item) => item.valor), backgroundColor: "#1d4ed8", borderRadius: 8 }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+    });
+
+    new Chart(document.getElementById("graficaAsistencias"), {
+        type: "bar",
+        data: {
+            labels: Object.keys(asistencias).map(formatear),
+            datasets: [{ label: "Registros", data: Object.values(asistencias), backgroundColor: ["#16a34a", "#0ea5e9", "#dc2626", "#facc15"], borderRadius: 8 }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+    });
+})();
+</script>
+{% endblock %}
