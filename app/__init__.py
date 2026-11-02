@@ -2,7 +2,7 @@
 from importlib import import_module
 from pathlib import Path
 import os
-from flask import Flask
+from flask import Flask, jsonify
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
@@ -20,6 +20,7 @@ def create_app(config_object=None):
     _load_default_config(app)
     if config_object:
         app.config.from_object(config_object)
+    _register_health_routes(app)
     db.init_app(app)
     migrate.init_app(app, db)
     socketio.init_app(
@@ -36,6 +37,14 @@ def create_app(config_object=None):
         _ensure_runtime_schema()
         _ensure_default_admin_user()
     return app
+
+
+def _register_health_routes(app):
+    """Expone un endpoint ligero para verificacion y keep-alive."""
+
+    @app.get("/healthz")
+    def healthz():
+        return jsonify({"ok": True, "app": app.config.get("APP_NAME", "Ruta Confianza")})
 
 
 def _load_default_config(app):

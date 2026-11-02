@@ -66,6 +66,7 @@ def register_socket_events(socketio):
         ruta.velocidad_actual = None
         ruta.rumbo_actual = None
         ruta.ultima_ubicacion_en = None
+        UbicacionRuta.query.filter_by(ruta_id=ruta.id).delete(synchronize_session=False)
         _commit_changes()
         emit(
             "tracking:route_status",

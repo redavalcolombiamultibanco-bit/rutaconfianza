@@ -1500,8 +1500,17 @@
         }
         mapContext.latestLocation = null;
         mapContext.hasLocation = false;
+        mapContext.rawRoutePoints = [];
+        mapContext.lastTraceSignature = null;
+        mapContext.lastTraceRequestAt = 0;
         if (mapContext.marker) {
             mapContext.marker.setOpacity(0);
+        }
+        if (mapContext.routeOutline) {
+            mapContext.routeOutline.setLatLngs([]);
+        }
+        if (mapContext.routeLine) {
+            mapContext.routeLine.setLatLngs([]);
         }
         if (mapContext.centerButton) {
             mapContext.centerButton.disabled = true;

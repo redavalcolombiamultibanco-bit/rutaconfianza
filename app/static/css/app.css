@@ -711,6 +711,107 @@ body {
     width: 100%;
 }
 
+.tracking-live__hero {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.tracking-live__hero-copy {
+    min-width: 0;
+}
+
+.tracking-live__eyebrow {
+    color: #2563eb;
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+}
+
+.tracking-live__title {
+    font-size: clamp(2rem, 4vw, 2.7rem);
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+
+.tracking-live__meta {
+    color: #6b7280;
+    font-size: 1.02rem;
+    line-height: 1.5;
+    max-width: 720px;
+}
+
+.tracking-live__badge {
+    flex-shrink: 0;
+}
+
+.tracking-live__status-card {
+    border-radius: 18px;
+    height: 100%;
+}
+
+.tracking-live__panel {
+    border-radius: 24px;
+}
+
+.tracking-live__panel-head {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.tracking-live__count,
+.tracking-live__helper,
+.tracking-live__student-status {
+    align-items: center;
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    border-radius: 999px;
+    color: #1d4ed8;
+    display: inline-flex;
+    font-size: 0.74rem;
+    font-weight: 700;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0.3rem 0.7rem;
+    text-transform: capitalize;
+}
+
+.tracking-live__helper {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #475569;
+}
+
+.tracking-live__student {
+    align-items: center;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    gap: 0.85rem;
+    padding: 0.9rem 1rem;
+}
+
+.tracking-live__student-copy {
+    min-width: 0;
+}
+
+.tracking-live__student-copy strong {
+    color: #0f172a;
+    display: block;
+    margin-bottom: 0.15rem;
+}
+
+.tracking-live__student-status {
+    flex-shrink: 0;
+}
+
 .map-toolbar {
     align-items: center;
     background: #ffffff;
@@ -1317,6 +1418,97 @@ body {
     .attendance-live-item {
         align-items: flex-start;
         flex-direction: column;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .tracking-live {
+        padding-top: 1.2rem !important;
+    }
+
+    .tracking-live__hero {
+        flex-direction: column;
+        gap: 0.8rem;
+        margin-bottom: 1.1rem !important;
+    }
+
+    .tracking-live__title {
+        font-size: 2.15rem;
+        line-height: 1.02;
+    }
+
+    .tracking-live__meta {
+        font-size: 0.94rem;
+    }
+
+    .tracking-live__badge {
+        align-self: flex-start;
+    }
+
+    .tracking-live__status-row {
+        margin-top: 0.2rem !important;
+    }
+
+    .tracking-live__status-card {
+        min-height: 92px;
+        padding: 1rem;
+    }
+
+    .tracking-live__panel {
+        border-radius: 20px;
+    }
+
+    .tracking-live__panel .card-body {
+        padding: 1rem !important;
+    }
+
+    .tracking-live__panel-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+
+    .map-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .map-toolbar-title {
+        line-height: 1.35;
+    }
+
+    .map-center-button {
+        width: 100%;
+    }
+
+    .tracking-map {
+        height: 48vh;
+        min-height: 310px;
+        max-height: 520px;
+    }
+
+    .leaflet-control-layers {
+        font-size: 0.76rem;
+        min-width: 102px;
+        padding: 0.28rem 0.42rem;
+    }
+
+    .leaflet-control-zoom a {
+        height: 34px !important;
+        line-height: 34px !important;
+        width: 34px !important;
+    }
+
+    .tracking-live__student {
+        padding: 0.8rem 0.85rem;
+    }
+
+    .tracking-live__student-status {
+        align-self: flex-start;
+    }
+
+    .chat-box {
+        max-height: 240px;
     }
 }
 

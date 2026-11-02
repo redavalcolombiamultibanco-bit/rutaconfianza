@@ -20,3 +20,14 @@ services:
         generateValue: true
       - key: SOCKETIO_ASYNC_MODE
         value: threading
+      - key: KEEPALIVE_URL
+        value: https://rutaconfianza.onrender.com
+  - type: cron
+    name: ruta-confianza-keepalive
+    runtime: python
+    schedule: "*/10 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/render_keepalive.py
+    envVars:
+      - key: KEEPALIVE_URL
+        value: https://rutaconfianza.onrender.com
