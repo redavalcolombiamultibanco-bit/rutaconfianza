@@ -4,12 +4,32 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+    <title>{% block title %}{{ config.APP_NAME }}{% endblock %}</title>
+    {# --- SEO: indexacion en Google y buscadores --- #}
+    <meta name="description" content="{% block meta_description %}{{ config.SITE_DESCRIPTION }}{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}{{ config.SITE_KEYWORDS }}{% endblock %}">
+    <meta name="robots" content="{% block meta_robots %}index, follow, max-image-preview:large{% endblock %}">
+    <link rel="canonical" href="{% block canonical %}{{ site_base_url }}{{ request.path }}{% endblock %}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ config.APP_NAME }}">
+    <meta property="og:locale" content="es_CO">
+    <meta property="og:title" content="{{ self.title()|striptags|trim }}">
+    <meta property="og:description" content="{{ self.meta_description()|striptags|trim }}">
+    <meta property="og:url" content="{{ self.canonical()|striptags|trim }}">
+    <meta property="og:image" content="{{ site_base_url }}{{ url_for('static', filename=config.SOCIAL_IMAGE) }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ self.title()|striptags|trim }}">
+    <meta name="twitter:description" content="{{ self.meta_description()|striptags|trim }}">
+    <meta name="twitter:image" content="{{ site_base_url }}{{ url_for('static', filename=config.SOCIAL_IMAGE) }}">
+    {% if config.GOOGLE_SITE_VERIFICATION %}
+    <meta name="google-site-verification" content="{{ config.GOOGLE_SITE_VERIFICATION }}">
+    {% endif %}
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="{{ config.APP_NAME }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
-    <title>{% block title %}{{ config.APP_NAME }}{% endblock %}</title>
+    {% block structured_data %}{% endblock %}
     {% block extra_head %}{% endblock %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

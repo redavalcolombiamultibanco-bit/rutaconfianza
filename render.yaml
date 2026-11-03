@@ -22,6 +22,12 @@ services:
         value: threading
       - key: KEEPALIVE_URL
         value: https://rutaconfianza.onrender.com
+      # La URL publica del sitio se toma automaticamente de RENDER_EXTERNAL_URL,
+      # por eso robots.txt y sitemap.xml ya salen con el dominio correcto.
+      # Para verificar la propiedad en Google Search Console (metodo "Etiqueta
+      # HTML"), descomenta las dos lineas y pega el codigo que te da Google:
+      # - key: GOOGLE_SITE_VERIFICATION
+      #   value: PEGA_AQUI_EL_CODIGO
   - type: cron
     name: ruta-confianza-keepalive
     runtime: python

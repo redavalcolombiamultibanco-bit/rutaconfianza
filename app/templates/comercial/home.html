@@ -1,5 +1,30 @@
 {% extends "base.html" %}
-{% block title %}{{ config.APP_NAME }} | Control, Seguridad y Logistica Escolar{% endblock %}
+{% block title %}{{ config.APP_NAME }} | Transporte escolar con seguimiento GPS en Yopal, Casanare{% endblock %}
+{% block meta_description %}Plataforma de transporte escolar en Yopal y Casanare: seguimiento GPS en vivo, control de asistencia, avisos por ruta y comunicacion directa con las familias.{% endblock %}
+{% block meta_keywords %}transporte escolar Yopal, ruta escolar Casanare, seguimiento GPS escolar, portal de padres, app conductor ruta escolar, buseta escolar Yopal{% endblock %}
+{% block structured_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": {{ config.APP_NAME|tojson }},
+    "description": {{ config.SITE_DESCRIPTION|tojson }},
+    "url": {{ (site_base_url ~ "/")|tojson }},
+    "image": {{ (site_base_url ~ url_for('static', filename=config.SOCIAL_IMAGE))|tojson }},
+    "logo": {{ (site_base_url ~ url_for('static', filename=config.BRAND_LOGO))|tojson }},
+    "telephone": {{ ("+57" ~ config.CONTACT_WHATSAPP)|tojson }},
+    "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Yopal",
+        "addressRegion": "Casanare",
+        "addressCountry": "CO"
+    },
+    "areaServed": {{ config.CONTACT_LOCATION|tojson }},
+    "openingHours": "Mo-Sa 06:00-18:00",
+    "knowsAbout": "Transporte escolar, seguimiento GPS de rutas, control de asistencia escolar"
+}
+</script>
+{% endblock %}
 {% block content %}
 <section class="hero-georuta" data-hero-carousel>
     <div class="hero-carousel" aria-hidden="true">

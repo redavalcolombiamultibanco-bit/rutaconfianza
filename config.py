@@ -30,6 +30,22 @@ class Config:
     CONTACT_PHONE = os.getenv("CONTACT_PHONE", "")
     CONTACT_WHATSAPP = os.getenv("CONTACT_WHATSAPP", "3013444105")
     CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "")
+    # --- SEO e indexacion en buscadores ---
+    # Si esta vacio se deduce del dominio de la peticion (util en Render).
+    SITE_URL = os.getenv("SITE_URL") or os.getenv("RENDER_EXTERNAL_URL", "")
+    SITE_DESCRIPTION = os.getenv(
+        "SITE_DESCRIPTION",
+        "Ruta Confianza es la plataforma de transporte escolar con seguimiento GPS en vivo, "
+        "control de asistencia y comunicacion directa con las familias en Yopal, Casanare.",
+    )
+    SITE_KEYWORDS = os.getenv(
+        "SITE_KEYWORDS",
+        "transporte escolar Yopal, ruta escolar Casanare, seguimiento GPS escolar, "
+        "portal de padres ruta escolar, app conductor ruta escolar",
+    )
+    SOCIAL_IMAGE = os.getenv("SOCIAL_IMAGE", "images/portada-ruta-escolar-1.jpg")
+    # Codigo de verificacion de Google Search Console (metodo etiqueta HTML).
+    GOOGLE_SITE_VERIFICATION = os.getenv("GOOGLE_SITE_VERIFICATION", "")
 
 
 class DevelopmentConfig(Config):

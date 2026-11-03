@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Portal de Padres | {{ config.APP_NAME }}{% endblock %}
+{% block meta_description %}Ingresa con el PIN de la ruta y mira en vivo el recorrido de la buseta de tu hijo: mapa en tiempo real, paradas y avisos de la ruta escolar.{% endblock %}
+{% block meta_keywords %}portal de padres, ruta escolar en vivo, PIN de ruta, seguimiento buseta escolar, {{ config.APP_NAME }}{% endblock %}
 {% block extra_head %}
 <link rel="manifest" href="{{ url_for('static', filename='manifest-familias.webmanifest') }}">
 {% endblock %}

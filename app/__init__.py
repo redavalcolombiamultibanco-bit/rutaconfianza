@@ -3,7 +3,7 @@ from importlib import import_module
 from pathlib import Path
 import mimetypes
 import os
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
@@ -23,6 +23,7 @@ def create_app(config_object=None):
         app.config.from_object(config_object)
     _register_health_routes(app)
     _register_pwa_routes(app)
+    _register_seo_routes(app)
     db.init_app(app)
     migrate.init_app(app, db)
     socketio.init_app(
@@ -62,6 +63,58 @@ def _register_pwa_routes(app):
         return response
 
 
+def _seo_base_url(app):
+    """Devuelve la URL publica del sitio: configurada o la del dominio de la peticion."""
+    configured = (app.config.get("SITE_URL") or "").strip().rstrip("/")
+    if configured:
+        return configured
+    return request.url_root.rstrip("/")
+
+
+def _register_seo_routes(app):
+    """Expone robots.txt y sitemap.xml para que los buscadores encuentren el sitio."""
+    # Paginas publicas indexables: (ruta, prioridad).
+    public_pages = (
+        ("/", "1.0"),
+        ("/directorio", "0.8"),
+        ("/tracking/", "0.7"),
+        ("/conductor/ingresar", "0.7"),
+    )
+
+    @app.get("/robots.txt")
+    def robots_txt():
+        lines = [
+            "User-agent: *",
+            "Allow: /",
+            "Disallow: /admin/",
+            "Disallow: /api/",
+            "Disallow: /tracking/ruta/",
+            "",
+            f"Sitemap: {_seo_base_url(app)}/sitemap.xml",
+            "",
+        ]
+        return Response("\n".join(lines), mimetype="text/plain")
+
+    @app.get("/sitemap.xml")
+    def sitemap_xml():
+        base = _seo_base_url(app)
+        entries = "\n".join(
+            "  <url>\n"
+            f"    <loc>{base}{path}</loc>\n"
+            "    <changefreq>weekly</changefreq>\n"
+            f"    <priority>{priority}</priority>\n"
+            "  </url>"
+            for path, priority in public_pages
+        )
+        xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            f"{entries}\n"
+            "</urlset>\n"
+        )
+        return Response(xml, mimetype="application/xml")
+
+
 def _load_default_config(app):
     """Carga una configuracion minima para desarrollo local."""
     base_dir = Path(app.root_path).resolve().parent
@@ -88,6 +141,19 @@ def _load_default_config(app):
         CONTACT_PHONE=os.getenv("CONTACT_PHONE", ""),
         CONTACT_WHATSAPP=os.getenv("CONTACT_WHATSAPP", "3013444105"),
         CONTACT_EMAIL=os.getenv("CONTACT_EMAIL", ""),
+        SITE_URL=os.getenv("SITE_URL") or os.getenv("RENDER_EXTERNAL_URL", ""),
+        SITE_DESCRIPTION=os.getenv(
+            "SITE_DESCRIPTION",
+            "Ruta Confianza es la plataforma de transporte escolar con seguimiento GPS en vivo, "
+            "control de asistencia y comunicacion directa con las familias en Yopal, Casanare.",
+        ),
+        SITE_KEYWORDS=os.getenv(
+            "SITE_KEYWORDS",
+            "transporte escolar Yopal, ruta escolar Casanare, seguimiento GPS escolar, "
+            "portal de padres ruta escolar, app conductor ruta escolar",
+        ),
+        SOCIAL_IMAGE=os.getenv("SOCIAL_IMAGE", "images/portada-ruta-escolar-1.jpg"),
+        GOOGLE_SITE_VERIFICATION=os.getenv("GOOGLE_SITE_VERIFICATION", ""),
     )
 
 
@@ -116,6 +182,10 @@ def _register_template_globals(app):
     @app.context_processor
     def inject_security_questions():
         return {"preguntas_seguridad": PREGUNTAS_SUGERIDAS}
+
+    @app.context_processor
+    def inject_site_base_url():
+        return {"site_base_url": _seo_base_url(app)}
 
 
 def _ensure_default_admin_user():

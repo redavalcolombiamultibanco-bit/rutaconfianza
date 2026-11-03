@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Ingreso de conductor | {{ config.APP_NAME }}{% endblock %}
+{% block meta_description %}Acceso para conductores de ruta escolar: inicie la ruta, registre asistencia y transmita su ubicacion GPS en vivo desde el celular.{% endblock %}
+{% block meta_keywords %}app conductor, conductor de ruta escolar, iniciar ruta escolar, registro de asistencia, {{ config.APP_NAME }}{% endblock %}
 {% block extra_head %}
 <link rel="manifest" href="{{ url_for('static', filename='manifest-conductor.webmanifest') }}">
 {% endblock %}
