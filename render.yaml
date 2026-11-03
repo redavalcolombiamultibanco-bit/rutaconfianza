@@ -28,6 +28,9 @@ services:
       # HTML"), descomenta las dos lineas y pega el codigo que te da Google:
       # - key: GOOGLE_SITE_VERIFICATION
       #   value: PEGA_AQUI_EL_CODIGO
+      # Si Google te muestra un archivo tipo google123abc.html, usa mejor:
+      # - key: GOOGLE_SITE_VERIFICATION_HTML
+      #   value: google123abc.html
   - type: cron
     name: ruta-confianza-keepalive
     runtime: python

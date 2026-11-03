@@ -46,6 +46,8 @@ class Config:
     SOCIAL_IMAGE = os.getenv("SOCIAL_IMAGE", "images/portada-ruta-escolar-1.jpg")
     # Codigo de verificacion de Google Search Console (metodo etiqueta HTML).
     GOOGLE_SITE_VERIFICATION = os.getenv("GOOGLE_SITE_VERIFICATION", "")
+    # Metodo alterno: archivo HTML de verificacion en la raiz del sitio.
+    GOOGLE_SITE_VERIFICATION_HTML = os.getenv("GOOGLE_SITE_VERIFICATION_HTML", "")
 
 
 class DevelopmentConfig(Config):

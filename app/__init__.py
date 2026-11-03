@@ -114,6 +114,17 @@ def _register_seo_routes(app):
         )
         return Response(xml, mimetype="application/xml")
 
+    verification_html = (app.config.get("GOOGLE_SITE_VERIFICATION_HTML") or "").strip()
+    if verification_html:
+        verification_path = f"/{verification_html.lstrip('/')}"
+        verification_body = f"google-site-verification: {verification_html}"
+
+        def google_site_verification_file():
+            return Response(verification_body, mimetype="text/plain")
+
+        endpoint_name = f"google_site_verification_{verification_html.replace('.', '_')}"
+        app.add_url_rule(verification_path, endpoint_name, google_site_verification_file)
+
 
 def _load_default_config(app):
     """Carga una configuracion minima para desarrollo local."""
@@ -154,6 +165,7 @@ def _load_default_config(app):
         ),
         SOCIAL_IMAGE=os.getenv("SOCIAL_IMAGE", "images/portada-ruta-escolar-1.jpg"),
         GOOGLE_SITE_VERIFICATION=os.getenv("GOOGLE_SITE_VERIFICATION", ""),
+        GOOGLE_SITE_VERIFICATION_HTML=os.getenv("GOOGLE_SITE_VERIFICATION_HTML", ""),
     )
 
 
