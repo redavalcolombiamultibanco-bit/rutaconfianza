@@ -1,8 +1,9 @@
 """Inicializacion principal de la aplicacion Ruta Confianza."""
 from importlib import import_module
 from pathlib import Path
+import mimetypes
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
@@ -21,6 +22,7 @@ def create_app(config_object=None):
     if config_object:
         app.config.from_object(config_object)
     _register_health_routes(app)
+    _register_pwa_routes(app)
     db.init_app(app)
     migrate.init_app(app, db)
     socketio.init_app(
@@ -45,6 +47,19 @@ def _register_health_routes(app):
     @app.get("/healthz")
     def healthz():
         return jsonify({"ok": True, "app": app.config.get("APP_NAME", "Ruta Confianza")})
+
+
+def _register_pwa_routes(app):
+    """Publica el service worker desde la raiz para que controle todo el sitio."""
+    mimetypes.add_type("application/manifest+json", ".webmanifest")
+
+    @app.get("/sw.js")
+    def service_worker():
+        response = send_from_directory(app.static_folder, "js/sw.js")
+        response.headers["Content-Type"] = "application/javascript; charset=utf-8"
+        response.headers["Service-Worker-Allowed"] = "/"
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 def _load_default_config(app):

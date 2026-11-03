@@ -2404,13 +2404,361 @@ section[id] {
     }
 }
 
+/* ============================================================
+   Acceso a portales (Padres y Conductor)
+   Panel dividido: imagen de fondo a un lado y formulario al otro.
+   ============================================================ */
+.portal-auth {
+    padding: clamp(1.5rem, 4vw, 3rem) 0 clamp(2.25rem, 5vw, 4rem);
+}
+
+.portal-auth__shell {
+    background: #ffffff;
+    border: 1px solid var(--rx-border);
+    border-radius: 30px;
+    box-shadow: 0 30px 70px rgba(15, 23, 42, 0.12);
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    margin: 0 auto;
+    max-width: 1040px;
+    overflow: hidden;
+}
+
+.portal-auth__media {
+    background-color: #0f172a;
+    background-position: center;
+    background-size: cover;
+    display: flex;
+    min-height: 540px;
+    position: relative;
+}
+
+.portal-auth__media::after {
+    background: linear-gradient(165deg, rgba(9, 19, 30, 0.88) 0%, rgba(9, 19, 30, 0.52) 46%, rgba(9, 19, 30, 0.86) 100%);
+    content: "";
+    inset: 0;
+    position: absolute;
+}
+
+.portal-auth__media-content {
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: clamp(1.75rem, 3vw, 2.6rem);
+    position: relative;
+    z-index: 1;
+}
+
+.portal-auth__eyebrow {
+    align-items: center;
+    color: #facc15;
+    display: inline-flex;
+    font-size: 0.72rem;
+    font-weight: 700;
+    gap: 0.45rem;
+    letter-spacing: 0.16em;
+    margin-bottom: 0.9rem;
+    text-transform: uppercase;
+}
+
+.portal-auth__title {
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+    font-weight: 700;
+    line-height: 1.22;
+    margin-bottom: 0.75rem;
+}
+
+.portal-auth__text {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.96rem;
+    margin-bottom: 1.35rem;
+    max-width: 34ch;
+}
+
+.portal-auth__list {
+    display: grid;
+    gap: 0.6rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.portal-auth__list li {
+    align-items: center;
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    font-size: 0.88rem;
+    gap: 0.6rem;
+}
+
+.portal-auth__list i {
+    align-items: center;
+    background: rgba(250, 204, 21, 0.16);
+    border-radius: 9px;
+    color: #facc15;
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
+}
+
+.portal-auth__panel {
+    align-items: center;
+    display: flex;
+    padding: clamp(1.75rem, 3.4vw, 3rem);
+}
+
+.portal-auth__form {
+    width: 100%;
+}
+
+.portal-auth__icon {
+    align-items: center;
+    background: linear-gradient(135deg, #111111, #333333);
+    border-radius: 16px;
+    color: #facc15;
+    display: inline-flex;
+    font-size: 1.35rem;
+    height: 54px;
+    justify-content: center;
+    margin-bottom: 1.1rem;
+    width: 54px;
+}
+
+.portal-auth__heading {
+    font-size: clamp(1.4rem, 2vw, 1.72rem);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.portal-auth__subtitle {
+    color: var(--rx-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.6rem;
+}
+
+.portal-auth__pin {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.42em;
+    text-indent: 0.42em;
+}
+
+.portal-auth__hint {
+    color: var(--rx-muted);
+    font-size: 0.85rem;
+    margin: 0.85rem 0 0;
+}
+
+.portal-auth .form-control {
+    border: 1px solid #dbe4f0;
+    border-radius: 16px;
+    min-height: 52px;
+    padding: 0.8rem 1rem;
+}
+
+.portal-auth .form-control:focus {
+    border-color: #94a3b8;
+    box-shadow: 0 0 0 0.25rem rgba(15, 23, 42, 0.08);
+}
+
+.portal-auth .btn-primary {
+    border-radius: 999px;
+    font-weight: 700;
+    min-height: 52px;
+}
+
+@media (max-width: 991.98px) {
+    .portal-auth__shell {
+        grid-template-columns: 1fr;
+    }
+
+    .portal-auth__media {
+        min-height: 240px;
+    }
+
+    .portal-auth__text {
+        max-width: none;
+    }
+
+    .portal-auth__list {
+        display: none;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .portal-auth {
+        padding: 1.25rem 0 2.25rem;
+    }
+
+    .portal-auth__shell {
+        border-radius: 22px;
+    }
+
+    .portal-auth__media {
+        min-height: 190px;
+    }
+
+    .portal-auth__panel {
+        padding: 1.5rem 1.25rem 1.75rem;
+    }
+
+    .portal-auth__pin {
+        letter-spacing: 0.3em;
+        text-indent: 0.3em;
+    }
+}
+
+/* ============================================================
+   Boton de instalacion de la app (PWA) en los portales
+   ============================================================ */
+.pwa-install {
+    margin-top: 1.25rem;
+}
+
+.pwa-install[hidden] {
+    display: none;
+}
+
+.pwa-install__button {
+    align-items: center;
+    background: #0f172a;
+    border: 1px solid #0f172a;
+    border-radius: 999px;
+    color: #ffffff;
+    display: inline-flex;
+    font-weight: 700;
+    gap: 0.55rem;
+    justify-content: center;
+    min-height: 50px;
+    padding: 0.75rem 1.35rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    width: 100%;
+}
+
+.pwa-install__button i {
+    color: #facc15;
+    font-size: 1.12rem;
+}
+
+.pwa-install__button:hover,
+.pwa-install__button:focus-visible {
+    background: #1b2b3a;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.22);
+    transform: translateY(-1px);
+}
+
+.pwa-install__button:active {
+    transform: translateY(0);
+}
+
+.pwa-install__note {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    color: #475569;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    margin: 0.75rem 0 0;
+    padding: 0.7rem 0.9rem;
+    text-align: left;
+}
+
+.pwa-install__note[hidden] {
+    display: none;
+}
+
+/* ============================================================
+   Optimizacion general para telefonos
+   ============================================================ */
+@media (max-width: 767.98px) {
+    /* iOS amplia la pantalla al enfocar un campo con letra menor a 16px. */
+    input.form-control,
+    select.form-select,
+    textarea.form-control {
+        font-size: 1rem;
+    }
+
+    .container,
+    .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    /* Areas tactiles comodas para el pulgar. */
+    .btn {
+        min-height: 46px;
+    }
+
+    .btn-sm {
+        min-height: 40px;
+    }
+
+    h1,
+    .h1 {
+        font-size: 1.7rem;
+    }
+
+    h2,
+    .h2 {
+        font-size: 1.45rem;
+    }
+
+    h3,
+    .h3 {
+        font-size: 1.25rem;
+    }
+
+    .shadow-soft,
+    .admin-card {
+        border-radius: 22px;
+    }
+
+    /* Las tablas de datos se deslizan en lugar de aplastarse. */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-table {
+        min-width: 720px;
+    }
+
+    .navbar-collapse .nav-link {
+        padding: 0.72rem 0.4rem !important;
+    }
+
+    .floating-help-button__content {
+        min-height: 76px;
+    }
+}
+
+/* Respeto por el borde inferior en telefonos con barra de gestos. */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .driver-app {
+        padding-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .site-footer {
+        padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pwa-install__button {
+        transition: none;
+    }
+}
+
 @media (max-width: 575.98px) {
     .admin-topbar__meta {
         display: none;
     }
 
     .floating-help-button {
-        bottom: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
         right: 16px;
         width: min(260px, calc(100vw - 20px));
     }

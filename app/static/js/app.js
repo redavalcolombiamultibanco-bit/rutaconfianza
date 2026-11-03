@@ -1426,6 +1426,95 @@
         });
     }
 
+    function registerServiceWorker() {
+        if (!("serviceWorker" in navigator)) {
+            return;
+        }
+        window.addEventListener("load", function () {
+            navigator.serviceWorker.register("/sw.js").catch(function () {
+                /* Sin service worker la app sigue funcionando en linea. */
+            });
+        });
+    }
+
+    function setupPwaInstall() {
+        const containers = document.querySelectorAll("[data-pwa-install]");
+        if (!containers.length) {
+            return;
+        }
+
+        const isStandalone =
+            window.matchMedia("(display-mode: standalone)").matches ||
+            window.matchMedia("(display-mode: fullscreen)").matches ||
+            window.navigator.standalone === true;
+        if (isStandalone) {
+            return;
+        }
+
+        const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+        const isMobile = isIos || /android/i.test(window.navigator.userAgent);
+        let installEvent = null;
+
+        function reveal() {
+            containers.forEach(function (container) {
+                container.hidden = false;
+            });
+        }
+
+        function showNote(container, message) {
+            const note = container.querySelector("[data-pwa-install-note]");
+            if (!note) {
+                return;
+            }
+            note.textContent = message;
+            note.hidden = false;
+        }
+
+        containers.forEach(function (container) {
+            const button = container.querySelector("[data-pwa-install-button]");
+            if (!button) {
+                return;
+            }
+            button.addEventListener("click", function () {
+                if (installEvent) {
+                    installEvent.prompt();
+                    installEvent.userChoice
+                        .then(function (choice) {
+                            if (choice && choice.outcome === "accepted") {
+                                container.hidden = true;
+                            }
+                        })
+                        .catch(function () {});
+                    installEvent = null;
+                    return;
+                }
+                if (isIos) {
+                    showNote(container, "Abre el boton Compartir de Safari y elige Anadir a pantalla de inicio.");
+                    return;
+                }
+                showNote(container, "Abre el menu del navegador y elige Instalar aplicacion o Anadir a pantalla de inicio.");
+            });
+        });
+
+        window.addEventListener("beforeinstallprompt", function (event) {
+            event.preventDefault();
+            installEvent = event;
+            reveal();
+        });
+
+        window.addEventListener("appinstalled", function () {
+            containers.forEach(function (container) {
+                showNote(container, "Aplicacion instalada. Busca el icono en tu pantalla de inicio.");
+            });
+        });
+
+        // En iPhone nunca se dispara beforeinstallprompt; en el resto de moviles
+        // se muestra igual para ofrecer la guia manual de instalacion.
+        if (isMobile) {
+            reveal();
+        }
+    }
+
     function setupChatForm() {
         const form = document.getElementById("chatForm");
         if (!form || !socket) {
@@ -2169,11 +2258,13 @@
         } else {
             setVoiceStatus("No disponible");
         }
+        registerServiceWorker();
         setupHeroCarousel();
         setupSocketErrors();
         setupTrackingPage();
         setupAdminRouteMap();
         setupPasswordToggles();
+        setupPwaInstall();
         setupChatForm();
         setupDriverControls();
         setupSchoolCatalogForms();

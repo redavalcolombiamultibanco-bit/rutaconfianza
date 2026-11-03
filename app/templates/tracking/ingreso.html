@@ -1,20 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Portal de Padres | {{ config.APP_NAME }}{% endblock %}
+{% block extra_head %}
+<link rel="manifest" href="{{ url_for('static', filename='manifest-familias.webmanifest') }}">
+{% endblock %}
 {% block content %}
-<section class="py-5 min-vh-75 d-flex align-items-center">
+<section class="portal-auth">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-5">
-                <div class="card border-0 shadow-soft">
-                    <div class="card-body p-4 p-lg-5">
-                        <span class="badge rounded-pill text-bg-primary mb-3">Acceso con PIN</span>
-                        <h1 class="h3 fw-bold mb-3">Consulta la ruta de tu hijo en tiempo real</h1>
-                        <p class="text-secondary">Ingresa el PIN asignado por la empresa o por el conductor para entrar al mapa, ver el estado del recorrido y participar en el chat grupal.</p>
-                        <form method="post" class="d-grid gap-3 mt-4">
-                            <input class="form-control form-control-lg text-center tracking-pin-input" name="pin" placeholder="Escribe el PIN" maxlength="10" required>
-                            <button class="btn btn-primary btn-lg rounded-pill" type="submit">Ingresar al seguimiento</button>
-                        </form>
+        <div class="portal-auth__shell">
+            <div class="portal-auth__media" style="background-image: url('{{ url_for('static', filename='images/portal-padres-familia.jpg') }}');">
+                <div class="portal-auth__media-content">
+                    <span class="portal-auth__eyebrow"><i class="bi bi-broadcast"></i> Seguimiento en vivo</span>
+                    <h2 class="portal-auth__title">La ruta de tu hijo, visible en todo momento.</h2>
+                    <p class="portal-auth__text">Consulta la ubicación del vehículo, el avance del recorrido y comunícate con la ruta desde el celular.</p>
+                    <ul class="portal-auth__list">
+                        <li><i class="bi bi-geo-alt"></i> Mapa con la posición del bus en tiempo real</li>
+                        <li><i class="bi bi-signpost-split"></i> Orden de las paradas y próxima llegada</li>
+                        <li><i class="bi bi-chat-dots"></i> Chat grupal con las familias de la ruta</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="portal-auth__panel">
+                <div class="portal-auth__form">
+                    <span class="portal-auth__icon"><i class="bi bi-shield-lock"></i></span>
+                    <h1 class="portal-auth__heading">Portal de Padres</h1>
+                    <p class="portal-auth__subtitle">Ingresa el PIN asignado por la empresa o por el conductor de la ruta.</p>
+                    <form method="post" class="d-grid gap-3">
+                        <input class="form-control form-control-lg text-center portal-auth__pin" name="pin" placeholder="PIN" maxlength="10" autocomplete="off" required>
+                        <button class="btn btn-primary btn-lg" type="submit">Ingresar al seguimiento</button>
+                    </form>
+                    <div class="pwa-install" data-pwa-install hidden>
+                        <button class="pwa-install__button" type="button" data-pwa-install-button>
+                            <i class="bi bi-phone"></i>
+                            <span>Descargar la app para el celular</span>
+                        </button>
+                        <p class="pwa-install__note" data-pwa-install-note hidden></p>
                     </div>
+                    <p class="portal-auth__hint">¿No conoces el PIN? Solicítalo a la empresa o al conductor asignado.</p>
                 </div>
             </div>
         </div>
