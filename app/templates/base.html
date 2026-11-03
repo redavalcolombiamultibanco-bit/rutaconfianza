@@ -4,6 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+    <script>
+        /* Si la app se abre instalada en el celular, se ocultan los enlaces del sitio web. */
+        (function () {
+            var installed = window.matchMedia("(display-mode: standalone)").matches ||
+                window.matchMedia("(display-mode: fullscreen)").matches ||
+                window.navigator.standalone === true;
+            if (installed) {
+                document.documentElement.classList.add("rx-standalone");
+            }
+        })();
+    </script>
     <title>{% block title %}{{ config.APP_NAME }}{% endblock %}</title>
     {# --- SEO: indexacion en Google y buscadores --- #}
     <meta name="description" content="{% block meta_description %}{{ config.SITE_DESCRIPTION }}{% endblock %}">
@@ -40,7 +51,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('comercial_bp.home') }}">
@@ -94,10 +105,6 @@
             </div>
             <div class="text-lg-end site-footer__meta">
                 <small class="text-secondary">Disenado para computador, tablet y celular.</small>
-                <a class="footer-admin-link" href="{{ url_for('admin_bp.ingresar') }}">
-                    <i class="bi bi-shield-lock"></i>
-                    <span>Panel administrativo</span>
-                </a>
             </div>
         </div>
     </footer>

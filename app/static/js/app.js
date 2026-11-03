@@ -66,7 +66,7 @@
         if (!container) {
             return;
         }
-        const placeholder = container.querySelector(".text-secondary.small");
+        const placeholder = container.querySelector(".chat-box__empty, .text-secondary.small");
         if (placeholder) {
             placeholder.remove();
         }
@@ -74,8 +74,10 @@
         const title = document.createElement("strong");
         const paragraph = document.createElement("p");
         message.className = "chat-message";
+        message.dataset.author = (author || "S").trim().charAt(0).toUpperCase();
+        title.className = "chat-message__author";
+        paragraph.className = "chat-message__body mb-0";
         title.textContent = author || "Sistema";
-        paragraph.className = "mb-0";
         paragraph.textContent = content || "";
         message.appendChild(title);
         message.appendChild(paragraph);
@@ -92,21 +94,28 @@
         let item = feed.querySelector(selector);
         if (!item) {
             item = document.createElement("div");
-            item.className = "attendance-live-item";
+            item.className = "attendance-live-item tracking-student";
             item.dataset.studentId = payload.estudiante_id;
+            const avatar = document.createElement("span");
+            avatar.className = "tracking-student__avatar";
+            avatar.textContent = (payload.estudiante || "E").trim().charAt(0).toUpperCase();
             const info = document.createElement("div");
+            info.className = "tracking-student__copy";
             const name = document.createElement("strong");
             const status = document.createElement("span");
             status.className = "text-secondary small js-attendance-status";
             name.textContent = payload.estudiante || "Estudiante";
             info.appendChild(name);
+            item.appendChild(avatar);
             item.appendChild(info);
             item.appendChild(status);
             feed.prepend(item);
         }
+        const estado = payload.estado || "pendiente";
+        item.dataset.estado = estado;
         const statusNode = item.querySelector(".js-attendance-status");
         if (statusNode) {
-            statusNode.textContent = payload.estado || "pendiente";
+            statusNode.textContent = estado;
         }
     }
 
@@ -126,7 +135,8 @@
         const badge = document.getElementById("routeStatusBadge");
         if (badge) {
             badge.textContent = active ? "Ruta en vivo" : "Ruta en espera";
-            badge.className = `badge rounded-pill px-3 py-2 text-bg-${active ? "success" : "secondary"}`;
+            badge.classList.toggle("text-bg-success", active);
+            badge.classList.toggle("text-bg-secondary", !active);
         }
     }
 

@@ -2,21 +2,22 @@
 {% block title %}Seguimiento en vivo | {{ config.APP_NAME }}{% endblock %}
 {% block meta_robots %}noindex, nofollow{% endblock %}
 {% block content %}
-<section class="tracking-live py-4 py-lg-5">
+<section class="tracking-live tracking-live--modern py-4 py-lg-5">
     <div class="container">
-        <div class="tracking-live__hero mb-4">
+        <div class="tracking-live__hero tracking-live__hero-card mb-4">
             <div class="tracking-live__hero-copy">
                 <span class="tracking-live__eyebrow">Seguimiento familiar</span>
-                <h1 class="tracking-live__title">{{ ruta.nombre }}</h1>
+                <h1 class="tracking-live__title mb-2">{{ ruta.nombre }}</h1>
                 <p class="tracking-live__meta mb-0">Conductor: {{ ruta.conductor.nombre_completo if ruta.conductor else "No asignado" }} · {{ ruta.ciudad or "Ciudad pendiente" }} · PIN {{ ruta.pin_acceso }}</p>
             </div>
-            <span id="routeStatusBadge" class="tracking-live__badge badge text-bg-{% if ruta.recorrido_activo %}success{% else %}secondary{% endif %} rounded-pill px-3 py-2">
+            <span id="routeStatusBadge" class="tracking-live__badge badge rounded-pill px-3 py-2 text-bg-{% if ruta.recorrido_activo %}success{% else %}secondary{% endif %}">
                 {% if ruta.recorrido_activo %}Ruta en vivo{% else %}Ruta en espera{% endif %}
             </span>
         </div>
-        <div class="row g-4">
+
+        <div class="row g-4 align-items-start">
             <div class="col-xl-8">
-                <div class="card border-0 shadow-soft overflow-hidden">
+                <div class="card border-0 shadow-soft tracking-live__map-card overflow-hidden">
                     <div class="map-toolbar">
                         <span class="map-toolbar-title"><i class="bi bi-broadcast me-2"></i>Ubicación del vehículo y paradas</span>
                         <button class="btn map-center-button js-map-center" type="button"
@@ -33,14 +34,31 @@
                         data-has-location="{{ 'true' if ruta.latitud_actual is not none and ruta.longitud_actual is not none else 'false' }}"
                         data-zoom="{{ map_defaults.zoom }}"></div>
                 </div>
+
                 <div class="row g-3 mt-1 tracking-live__status-row">
-                    <div class="col-md-4"><div class="status-card tracking-live__status-card"><span>Estado</span><strong id="liveRouteState">{% if ruta.recorrido_activo %}En recorrido{% else %}En espera{% endif %}</strong></div></div>
-                    <div class="col-md-4"><div class="status-card tracking-live__status-card"><span>Ultima ubicacion</span><strong id="lastUpdateAt">{{ ruta.ultima_ubicacion_en.strftime('%H:%M:%S') if ruta.ultima_ubicacion_en else "Sin datos" }}</strong></div></div>
-                    <div class="col-md-4"><div class="status-card tracking-live__status-card"><span>Coordenadas</span><strong id="liveCoordinates">{{ ruta.latitud_actual or map_defaults.lat }}, {{ ruta.longitud_actual or map_defaults.lng }}</strong></div></div>
+                    <div class="col-md-4">
+                        <div class="status-card tracking-live__status-card tracking-live__status-card--modern">
+                            <span>Estado</span>
+                            <strong id="liveRouteState">{% if ruta.recorrido_activo %}En recorrido{% else %}En espera{% endif %}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="status-card tracking-live__status-card tracking-live__status-card--modern">
+                            <span>Última ubicación</span>
+                            <strong id="lastUpdateAt">{{ ruta.ultima_ubicacion_en.strftime('%H:%M:%S') if ruta.ultima_ubicacion_en else "Sin datos" }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="status-card tracking-live__status-card tracking-live__status-card--modern">
+                            <span>Coordenadas</span>
+                            <strong id="liveCoordinates">{{ ruta.latitud_actual or map_defaults.lat }}, {{ ruta.longitud_actual or map_defaults.lng }}</strong>
+                        </div>
+                    </div>
                 </div>
             </div>
+
             <div class="col-xl-4">
-                <div class="card border-0 shadow-soft tracking-live__panel mb-4">
+                <div class="card border-0 shadow-soft tracking-live__panel tracking-live__panel--modern mb-4">
                     <div class="card-body p-4">
                         <div class="tracking-live__panel-head">
                             <h2 class="h5 mb-0">Estado de estudiantes</h2>
@@ -49,42 +67,48 @@
                         <div id="attendanceFeed" class="d-grid gap-2">
                             {% for estudiante in ruta.estudiantes %}
                             {% set asistencia = asistencias_hoy.get(estudiante.id) %}
-                            <div class="attendance-live-item tracking-live__student" data-student-id="{{ estudiante.id }}">
-                                <div class="tracking-live__student-copy">
+                            {% set estado = asistencia.estado.value if asistencia else "pendiente" %}
+                            <div class="attendance-live-item tracking-student" data-student-id="{{ estudiante.id }}" data-estado="{{ estado }}">
+                                <span class="tracking-student__avatar">{{ estudiante.nombre_completo[:1]|upper }}</span>
+                                <div class="tracking-student__copy">
                                     <strong>{{ estudiante.nombre_completo }}</strong>
-                                    <div class="text-secondary small">{{ estudiante.acudiente_nombre }}</div>
-                                    <div class="text-secondary small">{{ estudiante.direccion or "Direccion pendiente" }}</div>
+                                    <small>{{ estudiante.acudiente_nombre }}</small>
+                                    <small>{{ estudiante.direccion or "Direccion pendiente" }}</small>
                                 </div>
-                                <span class="text-secondary small js-attendance-status tracking-live__student-status">{{ asistencia.estado.value if asistencia else "pendiente" }}</span>
+                                <span class="text-secondary small js-attendance-status">{{ estado }}</span>
                             </div>
                             {% else %}
                             <div class="empty-state p-3">
-                                <p class="text-secondary mb-0">Aun no hay estudiantes cargados para esta ruta.</p>
+                                <p class="text-secondary mb-0">Aún no hay estudiantes cargados para esta ruta.</p>
                             </div>
                             {% endfor %}
                         </div>
                     </div>
                 </div>
-                <div class="card border-0 shadow-soft tracking-live__panel">
+
+                <div class="card border-0 shadow-soft tracking-live__panel tracking-live__panel--modern">
                     <div class="card-body p-4">
                         <div class="tracking-live__panel-head">
-                            <h2 class="h5 mb-0">Chat grupal</h2>
+                            <div class="tracking-live__chat-heading">
+                                <h2 class="h5 mb-0">Chat grupal</h2>
+                                <small class="tracking-live__chat-subtitle">Comparte novedades rápidas con la ruta.</small>
+                            </div>
                             <span class="tracking-live__helper">Familias y conductor</span>
                         </div>
-                        <div id="chatMessages" class="chat-box mb-3">
+                        <div id="chatMessages" class="chat-box tracking-live__chat-feed mb-3">
                             {% for mensaje in mensajes_recientes %}
-                            <div class="chat-message">
-                                <strong>{{ mensaje.remitente_nombre }}</strong>
-                                <p class="mb-0">{{ mensaje.contenido }}</p>
+                            <div class="chat-message" data-author="{{ mensaje.remitente_nombre[:1]|upper }}">
+                                <strong class="chat-message__author">{{ mensaje.remitente_nombre }}</strong>
+                                <p class="chat-message__body mb-0">{{ mensaje.contenido }}</p>
                             </div>
                             {% else %}
-                            <div class="text-secondary small">Todavia no hay mensajes en esta ruta.</div>
+                            <div class="text-secondary small chat-box__empty">Todavía no hay mensajes en esta ruta.</div>
                             {% endfor %}
                         </div>
-                        <form id="chatForm" class="d-grid gap-2" data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}" data-remitente-tipo="padre">
-                            <input id="chatSender" class="form-control" placeholder="Tu nombre" required>
+                        <form id="chatForm" class="d-grid gap-2 tracking-live__chat-form" data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}" data-remitente-tipo="padre">
+                            <input id="chatSender" class="form-control" placeholder="Tu nombre" autocomplete="name" required>
                             <textarea id="chatMessage" class="form-control" rows="3" placeholder="Escribe un mensaje para el grupo" required></textarea>
-                            <button class="btn btn-primary rounded-pill" type="submit">Enviar mensaje</button>
+                            <button class="btn btn-primary rounded-pill" type="submit"><i class="bi bi-send me-2"></i>Enviar mensaje</button>
                         </form>
                     </div>
                 </div>
