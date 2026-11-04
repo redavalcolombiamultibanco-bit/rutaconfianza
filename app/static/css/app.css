@@ -995,6 +995,12 @@ body {
     background: #16a34a;
 }
 
+.house-marker.is-selected .house-marker-shell {
+    background: #0b57d0;
+    box-shadow: 0 0 0 4px rgba(11, 87, 208, 0.2), 0 3px 12px rgba(15, 23, 42, 0.28);
+    transform: scale(1.08);
+}
+
 .house-marker-order {
     align-items: center;
     background: #0f172a;

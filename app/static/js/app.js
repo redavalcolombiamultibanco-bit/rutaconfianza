@@ -359,6 +359,7 @@
             optimizedUsingLiveLocation: false,
             lastOptimizationSignature: null,
             plannedRouteUsesLiveLocation: false,
+            selectedStopId: null,
         };
 
         function syncCenterControls() {
@@ -436,10 +437,10 @@
         return mapContext;
     }
 
-    function createHouseIcon(index, completed) {
+    function createHouseIcon(index, completed, selected) {
         const label = Number.isFinite(index) ? `<span class="house-marker-order">${index}</span>` : "";
         return L.divIcon({
-            className: `house-marker${completed ? " is-complete" : ""}`,
+            className: `house-marker${completed ? " is-complete" : ""}${selected ? " is-selected" : ""}`,
             html: `<div class="house-marker-shell">${label}<i class="bi bi-house-door-fill"></i></div>`,
             iconSize: [34, 34],
             iconAnchor: [17, 17]
@@ -559,10 +560,32 @@
         renderDriverHud(mapContext);
     }
 
+    function getSelectedStop(mapContext) {
+        if (!mapContext || !Array.isArray(mapContext.stops) || !mapContext.selectedStopId) {
+            return null;
+        }
+        const selectedStop = mapContext.stops.find(function (stop) {
+            return stop.id === mapContext.selectedStopId;
+        }) || null;
+        if (!selectedStop) {
+            mapContext.selectedStopId = null;
+        }
+        return selectedStop;
+    }
+
+    function getRouteTargetStops(mapContext) {
+        const selectedStop = getSelectedStop(mapContext);
+        if (selectedStop) {
+            return [selectedStop];
+        }
+        return getRemainingStops(mapContext);
+    }
+
     function renderRoutePlan(mapContext, payload) {
         if (!mapContext || !payload) {
             return;
         }
+        const previousSelectedStopId = mapContext.selectedStopId;
         mapContext.planData = payload;
         mapContext.lastNextStopId = null;
         mapContext.lastPlanRequestAt = 0;
@@ -583,13 +606,30 @@
                 const marker = L.marker(
                     [Number(stop.latitud), Number(stop.longitud)],
                     {
-                        icon: createHouseIcon(index + 1, false),
+                        icon: createHouseIcon(index + 1, false, previousSelectedStopId === stop.id),
                         draggable: Boolean(mapContext.allowHouseEditing),
                     }
                 ).addTo(mapContext.stopLayer);
                 marker.bindPopup(
                     `<strong>${stop.nombre || "Parada"}</strong><br>${stop.direccion || "Direccion pendiente"}`
                 );
+                marker.on("click", function () {
+                    const sameStopSelected = mapContext.selectedStopId === stop.id;
+                    mapContext.selectedStopId = sameStopSelected ? null : stop.id;
+                    mapContext.plannedRouteFitted = false;
+                    getOrderedStops(mapContext).forEach(function (currentStop, currentIndex) {
+                        updateStopMarkerState(currentStop, currentIndex);
+                    });
+                    updateNavigationSummary(mapContext);
+                    refreshPlannedRoute(mapContext);
+                    if (mapContext.isDriverMap) {
+                        setDriverNotice(
+                            sameStopSelected
+                                ? "Volviste al trazado automatico de la ruta."
+                                : `Ruta fijada hacia ${stop.nombre || "la parada seleccionada"}.`
+                        );
+                    }
+                });
                 if (mapContext.allowHouseEditing) {
                     marker.on("dragend", function () {
                         const position = marker.getLatLng();
@@ -603,10 +643,14 @@
                     referencia: stop.referencia,
                     coordenadas: [Number(stop.latitud), Number(stop.longitud)],
                     marker: marker,
+                    mapContext: mapContext,
                     orden: stop.orden_parada,
                     completada: false,
                 };
             });
+        mapContext.selectedStopId = mapContext.stops.some(function (stop) {
+            return stop.id === previousSelectedStopId;
+        }) ? previousSelectedStopId : null;
 
         if (
             payload.destino_coords &&
@@ -995,7 +1039,8 @@
         if (!stop || !stop.marker) {
             return;
         }
-        stop.marker.setIcon(createHouseIcon(index + 1, stop.completada));
+        const isSelected = Boolean(stop.mapContext && stop.mapContext.selectedStopId === stop.id);
+        stop.marker.setIcon(createHouseIcon(index + 1, stop.completada, isSelected));
     }
 
     function refreshStopProgress(mapContext) {
@@ -1019,13 +1064,14 @@
             return;
         }
         const remainingStops = getRemainingStops(mapContext);
-        if (!remainingStops.length) {
+        const selectedStop = getSelectedStop(mapContext);
+        if (!remainingStops.length && !selectedStop) {
             setTextContent("driverNextStop", mapContext.destination ? mapContext.destination.nombre : "Ruta completada");
             setTextContent("driverNextDistance", mapContext.destination && mapContext.latestLocation ? formatDistance(haversineMeters(mapContext.latestLocation, mapContext.destination.coordenadas)) : "--");
             renderDriverHud(mapContext);
             return;
         }
-        const nextStop = remainingStops[0];
+        const nextStop = selectedStop || remainingStops[0];
         const distance = mapContext.latestLocation ? haversineMeters(mapContext.latestLocation, nextStop.coordenadas) : null;
         const stopLabel = nextStop.direccion ? `${nextStop.nombre} · ${nextStop.direccion}` : (nextStop.nombre || "Siguiente parada");
         setTextContent("driverNextStop", stopLabel);
@@ -1053,10 +1099,10 @@
         if (origin) {
             coordinates.push(origin);
         }
-        getRemainingStops(mapContext).forEach(function (stop) {
+        getRouteTargetStops(mapContext).forEach(function (stop) {
             coordinates.push(stop.coordenadas);
         });
-        if (mapContext.destination) {
+        if (!getSelectedStop(mapContext) && mapContext.destination) {
             coordinates.push(mapContext.destination.coordenadas);
         }
         return coordinates.filter(Boolean);
@@ -1724,6 +1770,7 @@
         mapContext.optimizedUsingLiveLocation = false;
         mapContext.plannedRouteFitted = false;
         mapContext.plannedRouteUsesLiveLocation = false;
+        mapContext.selectedStopId = null;
         resetStopProgress(mapContext);
         if (mapContext.marker) {
             mapContext.marker.setOpacity(0);
@@ -1905,7 +1952,7 @@
         }
         const orderedStops = getOrderedStops(mapContext);
         const remainingStops = getRemainingStops(mapContext);
-        const nextStop = remainingStops[0] || null;
+        const nextStop = getSelectedStop(mapContext) || remainingStops[0] || null;
 
         list.innerHTML = "";
         if (!orderedStops.length) {
@@ -1948,6 +1995,7 @@
 
         let headline = "Ruta completada";
         const metaParts = [];
+        const selectedStop = getSelectedStop(mapContext);
         if (nextStop) {
             headline = nextStop.nombre || "Parada";
             if (nextStop.direccion) {
@@ -1956,7 +2004,7 @@
             if (mapContext.latestLocation) {
                 metaParts.push(formatDistance(haversineMeters(mapContext.latestLocation, nextStop.coordenadas)));
             }
-            metaParts.push(`${remainingStops.length} ${remainingStops.length === 1 ? "parada" : "paradas"}`);
+            metaParts.push(selectedStop ? "ruta fijada" : `${remainingStops.length} ${remainingStops.length === 1 ? "parada" : "paradas"}`);
         } else if (mapContext.destination) {
             headline = mapContext.destination.nombre;
             metaParts.push("Destino final");
