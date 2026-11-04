@@ -307,8 +307,9 @@
             lineJoin: "round",
         }).addTo(map);
         const routeLine = L.polyline([], {
-            color: isDriverMap ? "#f6c945" : "#2563eb",
-            weight: 4,
+            // Rastro del bus: azul tipo Google Maps.
+            color: "#1a73e8",
+            weight: 5,
             opacity: 1,
             lineCap: "round",
             lineJoin: "round",
@@ -331,7 +332,8 @@
                 lineJoin: "round",
             }).addTo(map),
             plannedRouteLine: L.polyline([], {
-                color: isDriverMap ? "#0ea5e9" : "#14b8a6",
+                // Ruta sugerida hacia las recogidas: azul oscuro estilo Google Maps.
+                color: "#0b57d0",
                 weight: 6,
                 opacity: 1,
                 lineCap: "round",
@@ -421,6 +423,15 @@
         });
         map.addControl(new InlineCenterControl());
         syncCenterControls();
+        // Leaflet mide el contenedor al inicializar. Si el diseno termina de
+        // acomodarse despues (movil o PWA instalada) hay que recalcular el
+        // tamano para que la ruta y las capas se dibujen correctamente.
+        window.setTimeout(function () {
+            map.invalidateSize();
+        }, 250);
+        window.addEventListener("resize", function () {
+            map.invalidateSize();
+        });
         return mapContext;
     }
 
@@ -445,8 +456,22 @@
 
     function raiseRouteLayers(mapContext) {
         // Orden fijo de capas: rastro real debajo y ruta sugerida siempre visible encima.
-        if (!mapContext) {
+        if (!mapContext || !mapContext.map) {
             return;
+        }
+        // Si alguna capa se desprendio del mapa se vuelve a agregar para que
+        // la ruta nunca quede invisible en el portal de familias.
+        if (mapContext.routeOutline && !mapContext.map.hasLayer(mapContext.routeOutline)) {
+            mapContext.routeOutline.addTo(mapContext.map);
+        }
+        if (mapContext.routeLine && !mapContext.map.hasLayer(mapContext.routeLine)) {
+            mapContext.routeLine.addTo(mapContext.map);
+        }
+        if (mapContext.plannedRouteOutline && !mapContext.map.hasLayer(mapContext.plannedRouteOutline)) {
+            mapContext.plannedRouteOutline.addTo(mapContext.map);
+        }
+        if (mapContext.plannedRouteLine && !mapContext.map.hasLayer(mapContext.plannedRouteLine)) {
+            mapContext.plannedRouteLine.addTo(mapContext.map);
         }
         if (mapContext.routeOutline) {
             mapContext.routeOutline.bringToFront();
@@ -854,6 +879,16 @@
             .then(function (payload) {
                 renderRoutePlan(mapContext, payload);
                 refreshPlannedRoute(mapContext);
+                // Red de seguridad: si la ruta no alcanzo a dibujarse (por red,
+                // OSRM lento o pestana en segundo plano) se reintenta enseguida.
+                window.setTimeout(function () {
+                    if (
+                        mapContext.plannedRouteLine &&
+                        !mapContext.plannedRouteLine.getLatLngs().length
+                    ) {
+                        refreshPlannedRoute(mapContext);
+                    }
+                }, 1500);
             })
             .catch(function (error) {
                 window.console.error("No fue posible cargar las paradas de la ruta.", error);

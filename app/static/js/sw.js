@@ -2,7 +2,7 @@
    Guarda en cache unicamente los archivos estaticos para que la app abra
    rapido desde el celular. Las rutas dinamicas y el canal en vivo de
    Socket.IO siempre van directo a la red para no mostrar datos viejos. */
-const CACHE_NAME = "ruta-confianza-v1";
+const CACHE_NAME = "ruta-confianza-v2";
 const PRECACHE_URLS = [
   "/static/css/app.css",
   "/static/js/app.js",
@@ -50,17 +50,16 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const fromNetwork = fetch(request)
-        .then((response) => {
-          if (response && response.status === 200 && response.type === "basic") {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || fromNetwork;
-    })
+    // Primero la red: asi las actualizaciones de la app llegan de inmediato al
+    // celular. Si no hay internet, se responde con la copia guardada en cache.
+    fetch(request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === "basic") {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });
