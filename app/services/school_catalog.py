@@ -16,6 +16,28 @@ IGNORED_SECTIONS = {
     "Fuentes base",
 }
 
+CASANARE_MUNICIPALITIES = [
+    "Aguazul",
+    "Chameza",
+    "Hato Corozal",
+    "La Salina",
+    "Mani",
+    "Monterrey",
+    "Nunchia",
+    "Orocue",
+    "Paz de Ariporo",
+    "Pore",
+    "Recetor",
+    "Sabanalarga",
+    "Sacama",
+    "San Luis de Palenque",
+    "Tamara",
+    "Tauramena",
+    "Trinidad",
+    "Villanueva",
+    "Yopal",
+]
+
 
 def _catalog_path() -> Path:
     return Path(__file__).resolve().parents[4] / CATALOG_FILENAME
@@ -68,5 +90,10 @@ def load_school_catalog():
 
 
 def get_municipalities():
-    """Entrega los municipios disponibles ordenados para sugerencias UI."""
-    return sorted(load_school_catalog().keys(), key=str.casefold)
+    """Entrega el listado completo de municipios de Casanare para la UI."""
+    municipalities_by_key = {
+        _normalize(municipio): municipio for municipio in CASANARE_MUNICIPALITIES
+    }
+    for municipio in load_school_catalog().keys():
+        municipalities_by_key[_normalize(municipio)] = municipio
+    return sorted(municipalities_by_key.values(), key=str.casefold)
