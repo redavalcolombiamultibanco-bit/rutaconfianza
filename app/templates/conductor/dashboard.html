@@ -577,9 +577,20 @@
                                 <div class="col-md-4"><input class="form-control" name="grado" placeholder="Grado"></div>
                                 <div class="col-12"><input class="form-control" name="direccion" placeholder="Direccion de recogida"></div>
                                 <div class="col-md-4"><input class="form-control" name="barrio" placeholder="Barrio"></div>
-                                <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" value="{{ ruta.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                                <div class="col-md-4">
+                                    <select class="form-select js-city-input" name="ciudad">
+                                        <option value="">Selecciona municipio o pueblo</option>
+                                        {% if ruta.ciudad and ruta.ciudad not in municipios_catalogo %}
+                                        <option value="{{ ruta.ciudad }}" selected>{{ ruta.ciudad }} (actual)</option>
+                                        {% endif %}
+                                        {% for municipio in municipios_catalogo %}
+                                        <option value="{{ municipio }}" {% if municipio == (ruta.ciudad or '') %}selected{% endif %}>{{ municipio }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                                 <div class="col-md-4"><input class="form-control" type="number" min="1" name="orden_parada" placeholder="Orden parada"></div>
                                 <div class="col-12"><input class="form-control" name="referencia_direccion" placeholder="Referencia de la direccion"></div>
+                                <div class="col-12"><div class="driver-field-help">Selecciona el municipio o pueblo antes de guardar para ayudar a ubicar mejor la direccion.</div></div>
                                 <div class="col-md-4"><input class="form-control" name="acudiente_nombre" placeholder="Nombre del acudiente" required></div>
                                 <div class="col-md-4"><input class="form-control" name="acudiente_telefono" placeholder="Telefono del acudiente" required></div>
                                 <div class="col-md-4"><input class="form-control" type="email" name="acudiente_email" placeholder="Correo del acudiente"></div>
@@ -623,7 +634,18 @@
                                 <div class="col-md-2"><input class="form-control" type="number" min="1" name="orden_parada" value="{{ estudiante.orden_parada or '' }}" placeholder="Orden"></div>
                                 <div class="col-12"><input class="form-control" name="direccion" value="{{ estudiante.direccion or '' }}" placeholder="Direccion de recogida"></div>
                                 <div class="col-md-4"><input class="form-control" name="barrio" value="{{ estudiante.barrio or '' }}" placeholder="Barrio"></div>
-                                <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" value="{{ estudiante.ciudad or ruta.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                                <div class="col-md-4">
+                                    <select class="form-select js-city-input" name="ciudad">
+                                        <option value="">Selecciona municipio o pueblo</option>
+                                        {% set ciudad_estudiante = estudiante.ciudad or ruta.ciudad or '' %}
+                                        {% if ciudad_estudiante and ciudad_estudiante not in municipios_catalogo %}
+                                        <option value="{{ ciudad_estudiante }}" selected>{{ ciudad_estudiante }} (actual)</option>
+                                        {% endif %}
+                                        {% for municipio in municipios_catalogo %}
+                                        <option value="{{ municipio }}" {% if municipio == ciudad_estudiante %}selected{% endif %}>{{ municipio }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                                 <div class="col-md-4"><input class="form-control" name="referencia_direccion" value="{{ estudiante.referencia_direccion or '' }}" placeholder="Referencia"></div>
                                 <div class="col-md-6"><input class="form-control" name="acudiente_nombre" value="{{ estudiante.acudiente_nombre }}" placeholder="Acudiente" required></div>
                                 <div class="col-md-3"><input class="form-control" name="acudiente_telefono" value="{{ estudiante.acudiente_telefono }}" placeholder="Telefono" required></div>
