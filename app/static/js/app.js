@@ -301,14 +301,14 @@
         }).addTo(map);
         const routeOutline = L.polyline([], {
             color: "#ffffff",
-            weight: 10,
+            weight: 8,
             opacity: 0.95,
             lineCap: "round",
             lineJoin: "round",
         }).addTo(map);
         const routeLine = L.polyline([], {
-            color: isDriverMap ? "#f59e0b" : "#f97316",
-            weight: 6,
+            color: isDriverMap ? "#f6c945" : "#2563eb",
+            weight: 4,
             opacity: 1,
             lineCap: "round",
             lineJoin: "round",
@@ -325,17 +325,15 @@
             routeLine: routeLine,
             plannedRouteOutline: L.polyline([], {
                 color: "#ffffff",
-                weight: 8,
-                opacity: 0.72,
-                dashArray: "10 10",
+                weight: 9,
+                opacity: 0.9,
                 lineCap: "round",
                 lineJoin: "round",
             }).addTo(map),
             plannedRouteLine: L.polyline([], {
                 color: isDriverMap ? "#0ea5e9" : "#14b8a6",
-                weight: 5,
-                opacity: 0.9,
-                dashArray: "12 8",
+                weight: 6,
+                opacity: 1,
                 lineCap: "round",
                 lineJoin: "round",
             }).addTo(map),
@@ -445,14 +443,32 @@
         });
     }
 
+    function raiseRouteLayers(mapContext) {
+        // Orden fijo de capas: rastro real debajo y ruta sugerida siempre visible encima.
+        if (!mapContext) {
+            return;
+        }
+        if (mapContext.routeOutline) {
+            mapContext.routeOutline.bringToFront();
+        }
+        if (mapContext.routeLine) {
+            mapContext.routeLine.bringToFront();
+        }
+        if (mapContext.plannedRouteOutline) {
+            mapContext.plannedRouteOutline.bringToFront();
+        }
+        if (mapContext.plannedRouteLine) {
+            mapContext.plannedRouteLine.bringToFront();
+        }
+    }
+
     function setPlannedRoute(mapContext, coordinates, options) {
         if (!mapContext) {
             return;
         }
         mapContext.plannedRouteOutline.setLatLngs(coordinates);
         mapContext.plannedRouteLine.setLatLngs(coordinates);
-        mapContext.plannedRouteOutline.bringToBack();
-        mapContext.plannedRouteLine.bringToBack();
+        raiseRouteLayers(mapContext);
         if (
             options &&
             options.fitBounds &&
@@ -580,7 +596,7 @@
         } else {
             mapContext.destination = null;
         }
-        applyOptimizedStopOrder(mapContext, mapContext.stops, getPlanOrigin(mapContext), false);
+        applyOptimizedStopOrder(mapContext, mapContext.stops, getCurrentOrigin(mapContext), false);
     }
 
     function setRouteHistory(mapContext, points) {
@@ -639,8 +655,7 @@
         }
         mapContext.routeOutline.setLatLngs(coordinates);
         mapContext.routeLine.setLatLngs(coordinates);
-        mapContext.routeOutline.bringToFront();
-        mapContext.routeLine.bringToFront();
+        raiseRouteLayers(mapContext);
         if (coordinates.length > 1 && shouldFitBounds) {
             mapContext.map.fitBounds(mapContext.routeLine.getBounds(), { padding: [24, 24] });
         }
@@ -934,27 +949,6 @@
         return null;
     }
 
-    function getPlanOrigin(mapContext) {
-        if (!mapContext) {
-            return null;
-        }
-        if (appState.driverRouteActive && Array.isArray(mapContext.latestLocation)) {
-            return mapContext.latestLocation;
-        }
-        if (
-            mapContext.planData &&
-            mapContext.planData.origen_coords &&
-            Number.isFinite(Number(mapContext.planData.origen_coords.latitud)) &&
-            Number.isFinite(Number(mapContext.planData.origen_coords.longitud))
-        ) {
-            return [
-                Number(mapContext.planData.origen_coords.latitud),
-                Number(mapContext.planData.origen_coords.longitud),
-            ];
-        }
-        return getCurrentOrigin(mapContext);
-    }
-
     function getRemainingStops(mapContext) {
         return getOrderedStops(mapContext).filter(function (stop) {
             return !stop.completada;
@@ -1019,7 +1013,7 @@
             return [];
         }
         const coordinates = [];
-        const origin = getPlanOrigin(mapContext);
+        const origin = getCurrentOrigin(mapContext);
         if (origin) {
             coordinates.push(origin);
         }
@@ -1095,10 +1089,10 @@
         if (!mapContext || !Array.isArray(mapContext.stops) || mapContext.stops.length < 2) {
             return Promise.resolve();
         }
-        const shouldUseLiveLocation = appState.driverRouteActive && Array.isArray(mapContext.latestLocation);
+        const shouldUseLiveLocation = mapContext.isDriverMap && appState.driverRouteActive && Array.isArray(mapContext.latestLocation);
         const origin = shouldUseLiveLocation && !mapContext.optimizedUsingLiveLocation
             ? mapContext.latestLocation
-            : (mapContext.optimizedOrigin || getPlanOrigin(mapContext));
+            : (mapContext.optimizedOrigin || getCurrentOrigin(mapContext));
         if (!Array.isArray(origin)) {
             return Promise.resolve();
         }
@@ -1138,12 +1132,17 @@
                 return;
             }
 
+            // Si aun no hay trazado en el mapa, se dibuja de inmediato la ruta
+            // directa a las recogidas para que nunca quede sin marcar.
             if (!mapContext.plannedRouteLine.getLatLngs().length) {
                 setPlannedRoute(
                     mapContext,
                     fallbackCoordinates,
-                    { fitBounds: !mapContext.plannedRouteFitted && !mapContext.hasLocation }
+                    { fitBounds: !mapContext.plannedRouteFitted }
                 );
+                if (!mapContext.plannedRouteFitted && fallbackCoordinates.length > 1) {
+                    mapContext.plannedRouteFitted = true;
+                }
             }
 
             const now = Date.now();
@@ -1177,9 +1176,9 @@
                         geometry.map(function (coordinate) {
                             return [coordinate[1], coordinate[0]];
                         }),
-                        { fitBounds: !mapContext.plannedRouteFitted && !mapContext.hasLocation }
+                        { fitBounds: !mapContext.plannedRouteFitted }
                     );
-                    if (!mapContext.plannedRouteFitted && !mapContext.hasLocation && geometry.length > 1) {
+                    if (!mapContext.plannedRouteFitted && geometry.length > 1) {
                         mapContext.plannedRouteFitted = true;
                     }
                     if (mapContext.isDriverMap) {
@@ -1193,12 +1192,13 @@
                 })
                 .catch(function (error) {
                     window.console.error("No fue posible calcular la ruta sugerida.", error);
+                    // Respaldo: mantiene visible la ruta directa hacia las recogidas.
                     setPlannedRoute(
                         mapContext,
                         fallbackCoordinates,
-                        { fitBounds: !mapContext.plannedRouteFitted && !mapContext.hasLocation }
+                        { fitBounds: !mapContext.plannedRouteFitted }
                     );
-                    if (!mapContext.plannedRouteFitted && !mapContext.hasLocation && fallbackCoordinates.length > 1) {
+                    if (!mapContext.plannedRouteFitted && fallbackCoordinates.length > 1) {
                         mapContext.plannedRouteFitted = true;
                     }
                 });
@@ -1295,6 +1295,7 @@
             if (!tracking || tracking.ruta_id !== rutaId) {
                 return;
             }
+            // Entrega a las familias el estado y la ubicacion actuales al entrar a la sala.
             updateRouteStatus(tracking);
             updateLocationFields(tracking, "liveCoordinates", "lastUpdateAt");
             updateMapLocation(mapContext, tracking);
@@ -1665,10 +1666,12 @@
         mapContext.rawRoutePoints = [];
         mapContext.lastTraceSignature = null;
         mapContext.lastTraceRequestAt = 0;
+        // Al iniciar una nueva ruta se reinicia el calculo del trazado y las marcas de paradas.
         mapContext.lastPlanRequestAt = 0;
         mapContext.lastOptimizationSignature = null;
         mapContext.optimizedOrigin = null;
         mapContext.optimizedUsingLiveLocation = false;
+        mapContext.plannedRouteFitted = false;
         resetStopProgress(mapContext);
         if (mapContext.marker) {
             mapContext.marker.setOpacity(0);
@@ -1686,6 +1689,7 @@
             mapContext.inlineCenterButton.disabled = true;
             mapContext.inlineCenterButton.classList.add("is-disabled");
         }
+        // Redibuja la ruta sugerida hacia las recogidas justo despues del reinicio.
         refreshPlannedRoute(mapContext);
     }
 
