@@ -903,6 +903,17 @@
             })
             .then(function (payload) {
                 setRouteHistory(mapContext, payload.puntos);
+                const latestPoint = Array.isArray(payload.puntos) && payload.puntos.length
+                    ? payload.puntos[payload.puntos.length - 1]
+                    : null;
+                if (latestPoint) {
+                    updateMapLocation(mapContext, {
+                        latitud: latestPoint.latitud,
+                        longitud: latestPoint.longitud,
+                        precision: latestPoint.precision,
+                        ultima_ubicacion_en: latestPoint.registrada_en || latestPoint.ultima_ubicacion_en || null,
+                    });
+                }
             })
             .catch(function (error) {
                 window.console.error("No fue posible cargar el recorrido de la ruta.", error);
@@ -1230,7 +1241,7 @@
             }
 
             const now = Date.now();
-            if (now - mapContext.lastPlanRequestAt < 12000) {
+            if (now - mapContext.lastPlanRequestAt < 4000) {
                 return;
             }
             mapContext.lastPlanRequestAt = now;
@@ -1428,6 +1439,13 @@
                 loadRoutePlan(mapContext, rutaId, pin);
             }
         });
+
+        // Respaldo para que el portal de familias no se quede atras si el
+        // navegador pierde algun evento en vivo.
+        window.setInterval(function () {
+            loadRouteHistory(mapContext, rutaId, pin);
+            refreshPlannedRoute(mapContext);
+        }, 8000);
     }
 
     function readJsonScript(elementId) {

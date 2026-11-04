@@ -348,7 +348,7 @@ def _search_arcgis(query: str) -> list[dict]:
             "singleLine": query,
             "countryCode": "COL",
             "maxLocations": 5,
-            "outFields": "Match_addr,Addr_type",
+            "outFields": "Match_addr,Addr_type,City,Region,Subregion,CountryCode",
         }
     )
     request = Request(
@@ -417,8 +417,9 @@ def _score_result(result: dict, parts: list[str]) -> float:
 
 def _score_arcgis_result(result: dict, parts: list[str]) -> float:
     score = 0.0
-    address_text = _normalize_text(result.get("address") or result.get("attributes", {}).get("Match_addr") or "")
-    addr_type = _normalize_text(result.get("attributes", {}).get("Addr_type") or "")
+    attributes = result.get("attributes", {}) if isinstance(result.get("attributes"), dict) else {}
+    address_text = _normalize_text(result.get("address") or attributes.get("Match_addr") or "")
+    addr_type = _normalize_text(attributes.get("Addr_type") or "")
     try:
         score += float(result.get("score") or 0)
     except (TypeError, ValueError):
@@ -439,6 +440,23 @@ def _score_arcgis_result(result: dict, parts: list[str]) -> float:
         normalized = _normalize_text(part)
         if normalized and normalized in address_text:
             score += 2
+
+    locality_fields = [
+        _normalize_text(attributes.get("City") or ""),
+        _normalize_text(attributes.get("Subregion") or ""),
+        _normalize_text(attributes.get("Region") or ""),
+    ]
+    specified_localities = [_normalize_text(part) for part in parts[1:] if _normalize_text(part) not in {"colombia"}]
+    matched_locality = False
+    for locality in specified_localities:
+        if locality and locality in locality_fields:
+            score += 8
+            matched_locality = True
+    if specified_localities and not matched_locality:
+        score -= 16
+
+    if "casanare" in specified_localities and "casanare" not in locality_fields:
+        score -= 24
 
     if addr_type == "pointaddress":
         score += 10
