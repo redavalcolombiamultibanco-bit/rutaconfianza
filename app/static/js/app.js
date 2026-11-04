@@ -307,7 +307,7 @@
             lineJoin: "round",
         }).addTo(map);
         const routeLine = L.polyline([], {
-            color: isDriverMap ? "#f6c945" : "#2563eb",
+            color: isDriverMap ? "#f59e0b" : "#f97316",
             weight: 6,
             opacity: 1,
             lineCap: "round",
@@ -451,6 +451,8 @@
         }
         mapContext.plannedRouteOutline.setLatLngs(coordinates);
         mapContext.plannedRouteLine.setLatLngs(coordinates);
+        mapContext.plannedRouteOutline.bringToBack();
+        mapContext.plannedRouteLine.bringToBack();
         if (
             options &&
             options.fitBounds &&
@@ -484,6 +486,18 @@
                 return leftOrder - rightOrder;
             }
             return String(left.nombre || "").localeCompare(String(right.nombre || ""), "es");
+        });
+    }
+
+    function resetStopProgress(mapContext) {
+        if (!mapContext || !Array.isArray(mapContext.stops)) {
+            return;
+        }
+        mapContext.lastNextStopId = null;
+        mapContext.arrivalNoticeByStop = {};
+        getOrderedStops(mapContext).forEach(function (stop, index) {
+            stop.completada = false;
+            updateStopMarkerState(stop, index);
         });
     }
 
@@ -566,7 +580,7 @@
         } else {
             mapContext.destination = null;
         }
-        applyOptimizedStopOrder(mapContext, mapContext.stops, getCurrentOrigin(mapContext), false);
+        applyOptimizedStopOrder(mapContext, mapContext.stops, getPlanOrigin(mapContext), false);
     }
 
     function setRouteHistory(mapContext, points) {
@@ -625,6 +639,8 @@
         }
         mapContext.routeOutline.setLatLngs(coordinates);
         mapContext.routeLine.setLatLngs(coordinates);
+        mapContext.routeOutline.bringToFront();
+        mapContext.routeLine.bringToFront();
         if (coordinates.length > 1 && shouldFitBounds) {
             mapContext.map.fitBounds(mapContext.routeLine.getBounds(), { padding: [24, 24] });
         }
@@ -918,6 +934,27 @@
         return null;
     }
 
+    function getPlanOrigin(mapContext) {
+        if (!mapContext) {
+            return null;
+        }
+        if (appState.driverRouteActive && Array.isArray(mapContext.latestLocation)) {
+            return mapContext.latestLocation;
+        }
+        if (
+            mapContext.planData &&
+            mapContext.planData.origen_coords &&
+            Number.isFinite(Number(mapContext.planData.origen_coords.latitud)) &&
+            Number.isFinite(Number(mapContext.planData.origen_coords.longitud))
+        ) {
+            return [
+                Number(mapContext.planData.origen_coords.latitud),
+                Number(mapContext.planData.origen_coords.longitud),
+            ];
+        }
+        return getCurrentOrigin(mapContext);
+    }
+
     function getRemainingStops(mapContext) {
         return getOrderedStops(mapContext).filter(function (stop) {
             return !stop.completada;
@@ -982,7 +1019,7 @@
             return [];
         }
         const coordinates = [];
-        const origin = getCurrentOrigin(mapContext);
+        const origin = getPlanOrigin(mapContext);
         if (origin) {
             coordinates.push(origin);
         }
@@ -1058,10 +1095,10 @@
         if (!mapContext || !Array.isArray(mapContext.stops) || mapContext.stops.length < 2) {
             return Promise.resolve();
         }
-        const shouldUseLiveLocation = mapContext.isDriverMap && appState.driverRouteActive && Array.isArray(mapContext.latestLocation);
+        const shouldUseLiveLocation = appState.driverRouteActive && Array.isArray(mapContext.latestLocation);
         const origin = shouldUseLiveLocation && !mapContext.optimizedUsingLiveLocation
             ? mapContext.latestLocation
-            : (mapContext.optimizedOrigin || getCurrentOrigin(mapContext));
+            : (mapContext.optimizedOrigin || getPlanOrigin(mapContext));
         if (!Array.isArray(origin)) {
             return Promise.resolve();
         }
@@ -1095,9 +1132,18 @@
         updateNavigationSummary(mapContext);
         optimizeStopSequence(mapContext).finally(function () {
             const waypoints = getNavigationWaypoints(mapContext);
+            const fallbackCoordinates = waypoints.filter(Boolean);
             if (waypoints.length < 2) {
                 setPlannedRoute(mapContext, []);
                 return;
+            }
+
+            if (!mapContext.plannedRouteLine.getLatLngs().length) {
+                setPlannedRoute(
+                    mapContext,
+                    fallbackCoordinates,
+                    { fitBounds: !mapContext.plannedRouteFitted && !mapContext.hasLocation }
+                );
             }
 
             const now = Date.now();
@@ -1147,6 +1193,14 @@
                 })
                 .catch(function (error) {
                     window.console.error("No fue posible calcular la ruta sugerida.", error);
+                    setPlannedRoute(
+                        mapContext,
+                        fallbackCoordinates,
+                        { fitBounds: !mapContext.plannedRouteFitted && !mapContext.hasLocation }
+                    );
+                    if (!mapContext.plannedRouteFitted && !mapContext.hasLocation && fallbackCoordinates.length > 1) {
+                        mapContext.plannedRouteFitted = true;
+                    }
                 });
         });
     }
@@ -1236,6 +1290,15 @@
             return;
         }
         joinRouteRoom(rutaId, pin);
+        socket.on("room:joined", function (payload) {
+            const tracking = payload && payload.tracking;
+            if (!tracking || tracking.ruta_id !== rutaId) {
+                return;
+            }
+            updateRouteStatus(tracking);
+            updateLocationFields(tracking, "liveCoordinates", "lastUpdateAt");
+            updateMapLocation(mapContext, tracking);
+        });
         socket.on("tracking:location", function (payload) {
             if (payload.ruta_id !== rutaId) {
                 return;
@@ -1602,6 +1665,11 @@
         mapContext.rawRoutePoints = [];
         mapContext.lastTraceSignature = null;
         mapContext.lastTraceRequestAt = 0;
+        mapContext.lastPlanRequestAt = 0;
+        mapContext.lastOptimizationSignature = null;
+        mapContext.optimizedOrigin = null;
+        mapContext.optimizedUsingLiveLocation = false;
+        resetStopProgress(mapContext);
         if (mapContext.marker) {
             mapContext.marker.setOpacity(0);
         }
@@ -1618,6 +1686,7 @@
             mapContext.inlineCenterButton.disabled = true;
             mapContext.inlineCenterButton.classList.add("is-disabled");
         }
+        refreshPlannedRoute(mapContext);
     }
 
     function isStaleGpsPosition(position) {
