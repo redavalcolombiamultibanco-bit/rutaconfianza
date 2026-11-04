@@ -358,6 +358,7 @@
             optimizedOrigin: null,
             optimizedUsingLiveLocation: false,
             lastOptimizationSignature: null,
+            plannedRouteUsesLiveLocation: false,
         };
 
         function syncCenterControls() {
@@ -1146,10 +1147,12 @@
             .then(function (payload) {
                 const orderedStops = extractTripStopOrder(payload, mapContext.stops, Boolean(mapContext.destination));
                 applyOptimizedStopOrder(mapContext, orderedStops, origin, shouldUseLiveLocation);
+                updateNavigationSummary(mapContext);
             })
             .catch(function (error) {
                 window.console.error("No fue posible optimizar el orden de las paradas.", error);
                 applyOptimizedStopOrder(mapContext, getOrderedStops(mapContext), origin, shouldUseLiveLocation);
+                updateNavigationSummary(mapContext);
             });
     }
 
@@ -1282,6 +1285,12 @@
             return;
         }
         mapContext.latestLocation = [lat, lng];
+        if (mapContext.isDriverMap && appState.driverRouteActive && !mapContext.plannedRouteUsesLiveLocation) {
+            // Al entrar la primera posicion real del celular, se vuelve a
+            // encuadrar la ruta para que se vea desde el punto actual del bus.
+            mapContext.plannedRouteFitted = false;
+            mapContext.plannedRouteUsesLiveLocation = true;
+        }
         mapContext.hasLocation = true;
         mapContext.marker.setOpacity(1);
         if (mapContext.centerButton || mapContext.inlineCenterButton) {
@@ -1707,6 +1716,7 @@
         mapContext.optimizedOrigin = null;
         mapContext.optimizedUsingLiveLocation = false;
         mapContext.plannedRouteFitted = false;
+        mapContext.plannedRouteUsesLiveLocation = false;
         resetStopProgress(mapContext);
         if (mapContext.marker) {
             mapContext.marker.setOpacity(0);
@@ -1879,7 +1889,7 @@
     }
 
     function renderDriverHud(mapContext) {
-        if (!mapContext || !mapContext.isDriverMap || !mapContext.hudExpanded) {
+        if (!mapContext || !mapContext.isDriverMap) {
             return;
         }
         const list = document.getElementById("driverHudStops");
