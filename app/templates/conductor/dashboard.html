@@ -114,11 +114,11 @@
     .driver-map-stage { position: relative; }
     .driver-map-hud { display: none; inset: 0; pointer-events: none; position: absolute; z-index: 1200; }
     .driver-map-card.is-expanded .driver-map-hud { display: block; }
-    .driver-hud-next { align-items: center; background: rgba(16,33,43,.95); border-radius: 14px; box-shadow: 0 14px 34px rgba(0,0,0,.34); color: #fff; display: flex; flex-wrap: wrap; gap: .3rem .85rem; left: 1rem; padding: .85rem 1.1rem; pointer-events: auto; position: absolute; right: 1rem; top: 1rem; }
+    .driver-hud-next { align-items: center; backdrop-filter: blur(8px); background: rgba(16,33,43,.88); border-radius: 14px; box-shadow: 0 14px 34px rgba(0,0,0,.28); color: #fff; display: flex; flex-wrap: wrap; gap: .3rem .85rem; left: 1rem; max-width: min(560px, calc(100vw - 2rem)); padding: .78rem 1rem; pointer-events: auto; position: absolute; right: auto; top: 1rem; }
     .driver-hud-next-label { color: var(--driver-accent); font-size: .65rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; width: 100%; }
     .driver-hud-next strong { font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
     .driver-hud-next-meta { background: rgba(246,201,69,.16); border-radius: 999px; color: var(--driver-accent); font-size: .74rem; font-weight: 800; margin-left: auto; padding: .32rem .72rem; white-space: nowrap; }
-    .driver-hud-stops { background: rgba(16,33,43,.94); border-radius: 14px; bottom: 1rem; box-shadow: 0 14px 34px rgba(0,0,0,.34); color: #fff; display: flex; flex-direction: column; left: 1rem; max-height: min(48vh, 400px); padding: .9rem 1rem; pointer-events: auto; position: absolute; width: min(310px, 74vw); }
+    .driver-hud-stops { backdrop-filter: blur(8px); background: rgba(16,33,43,.84); border-radius: 14px; bottom: 1rem; box-shadow: 0 14px 34px rgba(0,0,0,.28); color: #fff; display: flex; flex-direction: column; max-height: min(34vh, 270px); padding: .82rem .92rem; pointer-events: auto; position: absolute; right: 1rem; width: min(275px, 62vw); }
     .driver-hud-stops-head { align-items: center; color: var(--driver-accent); display: flex; font-size: .67rem; font-weight: 800; letter-spacing: .1em; margin-bottom: .6rem; text-transform: uppercase; }
     .driver-hud-stops-list { list-style: none; margin: 0; overflow-y: auto; padding: 0; }
     .driver-hud-stop { align-items: center; border-bottom: 1px solid rgba(255,255,255,.09); display: flex; gap: .62rem; padding: .52rem 0; }
@@ -246,7 +246,10 @@
         .driver-attendance-status { display: none; }
         .driver-lower-row { margin-top: 1rem; }
         .driver-navigation-grid { grid-template-columns: 1fr; }
-        .driver-hud-stops { width: calc(100% - 2rem); }
+        .driver-hud-next { left: .75rem; max-width: calc(100vw - 1.5rem); padding: .72rem .82rem; top: .75rem; }
+        .driver-hud-next strong { font-size: .96rem; }
+        .driver-hud-next-meta { font-size: .7rem; margin-left: 0; max-width: 100%; white-space: normal; }
+        .driver-map-card.is-expanded .driver-hud-stops { display: none; }
     }
     @media (prefers-reduced-motion: reduce) {
         .driver-card, .driver-live-state.is-live .driver-live-dot, .driver-control-status.is-live .driver-live-dot, .driver-marker-pulse { animation: none !important; }

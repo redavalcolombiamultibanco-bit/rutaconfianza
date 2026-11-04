@@ -1125,7 +1125,7 @@
         if (!mapContext || !Array.isArray(mapContext.stops) || mapContext.stops.length < 2) {
             return Promise.resolve();
         }
-        const shouldUseLiveLocation = mapContext.isDriverMap && appState.driverRouteActive && Array.isArray(mapContext.latestLocation);
+        const shouldUseLiveLocation = appState.driverRouteActive && Array.isArray(mapContext.latestLocation);
         const origin = shouldUseLiveLocation && !mapContext.optimizedUsingLiveLocation
             ? mapContext.latestLocation
             : (mapContext.optimizedOrigin || getCurrentOrigin(mapContext));
@@ -1284,12 +1284,19 @@
         if (Number.isNaN(lat) || Number.isNaN(lng)) {
             return;
         }
+        const previousLocation = Array.isArray(mapContext.latestLocation) ? mapContext.latestLocation.slice() : null;
         mapContext.latestLocation = [lat, lng];
-        if (mapContext.isDriverMap && appState.driverRouteActive && !mapContext.plannedRouteUsesLiveLocation) {
-            // Al entrar la primera posicion real del celular, se vuelve a
-            // encuadrar la ruta para que se vea desde el punto actual del bus.
+        if (appState.driverRouteActive && !mapContext.plannedRouteUsesLiveLocation) {
+            // Al entrar la primera posicion real del bus, la ruta planeada se
+            // vuelve a encuadrar desde ese punto tanto para conductor como
+            // para familias.
             mapContext.plannedRouteFitted = false;
             mapContext.plannedRouteUsesLiveLocation = true;
+        } else if (appState.driverRouteActive && previousLocation) {
+            const movement = haversineMeters(previousLocation, mapContext.latestLocation);
+            if (movement !== null && movement >= 120) {
+                mapContext.plannedRouteFitted = false;
+            }
         }
         mapContext.hasLocation = true;
         mapContext.marker.setOpacity(1);
