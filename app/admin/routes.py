@@ -22,7 +22,7 @@ from flask import (
     url_for,
 )
 from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db, socketio
@@ -34,6 +34,7 @@ from app.models import (
     EstadoSolicitud,
     EstadoSuscripcion,
     Estudiante,
+    MensajeChat,
     MensajeContacto,
     Ruta,
     SolicitudConductor,
@@ -427,7 +428,7 @@ def crear_conductor():
         password_hash=generate_password_hash(password),
         nombre_vehiculo=request.form.get("nombre_vehiculo", "").strip(),
         placa_vehiculo=request.form.get("placa_vehiculo", "").strip().upper(),
-        capacidad_vehiculo=request.form.get("capacidad_vehiculo") or None,
+        capacidad_vehiculo=request.form.get("capacidad_vehiculo", type=int),
         color_vehiculo=request.form.get("color_vehiculo", "").strip() or None,
         ciudad=request.form.get("ciudad", "").strip() or None,
         descripcion_publica=request.form.get("descripcion_publica", "").strip() or None,
@@ -614,6 +615,23 @@ def eliminar_ruta(ruta_id):
         error_message="No fue posible eliminar la ruta.",
         redirect_to=url_for("admin_bp.rutas"),
     )
+
+
+@admin_bp.route("/rutas/<int:ruta_id>/chat/limpiar", methods=["POST"])
+def limpiar_chat_ruta(ruta_id):
+    """Vacía el chat de una ruta desde el panel administrativo."""
+    ruta = Ruta.query.get_or_404(ruta_id)
+    try:
+        MensajeChat.query.filter_by(ruta_id=ruta.id).delete(synchronize_session=False)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash("No fue posible limpiar el chat de la ruta.", "danger")
+    else:
+        # Se avisa a la sala para que conductor y familias vacien su chat.
+        socketio.emit("chat:cleared", {"ruta_id": ruta.id}, to=ruta.socket_room)
+        flash(f"El chat de la ruta {ruta.nombre} quedó limpio.", "success")
+    return redirect(url_for("admin_bp.rutas", ruta_id=ruta.id))
 
 
 # --- Estudiantes --------------------------------------------------------------

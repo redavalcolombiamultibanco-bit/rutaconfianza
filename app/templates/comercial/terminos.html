@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Términos y Condiciones y Política de Tratamiento de Datos | {{ config.APP_NAME }}{% endblock %}
+{% block meta_description %}Términos y condiciones de uso de la plataforma {{ config.APP_NAME }} y política de tratamiento de datos personales conforme a la Ley 1581 de 2012 de Colombia.{% endblock %}
+{% block meta_keywords %}términos y condiciones, política de privacidad, tratamiento de datos personales, Ley 1581, habeas data, transporte escolar{% endblock %}
+{% block extra_css %}
+<style>
+    .legal-hero {
+        background: var(--rx-accent);
+        /* Se mantiene el acento amarillo de la marca en un bloque sobrio. */
+    }
+    .legal-hero h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--rx-text);
+    }
+    .legal-body {
+        max-width: 900px;
+    }
+    .legal-body h2 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-top: 2rem;
+        scroll-margin-top: 90px;
+    }
+    .legal-body h2:first-of-type {
+        margin-top: 0;
+    }
+    .legal-body p,
+    .legal-body li {
+        color: #333333;
+        line-height: 1.7;
+    }
+    .legal-body ol,
+    .legal-body ul {
+        padding-left: 1.25rem;
+    }
+    .legal-index a {
+        color: var(--rx-text);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .legal-index a:hover {
+        text-decoration: underline;
+    }
+    .legal-updated {
+        font-size: 0.85rem;
+        color: var(--rx-muted);
+    }
+</style>
+{% endblock %}
+{% block content %}
+<section class="legal-hero py-4 py-lg-5">
+    <div class="container">
+        <h1 class="mb-2">Términos y Condiciones de Uso</h1>
+        <p class="mb-1">Plataforma {{ config.APP_NAME }} — {{ config.CONTACT_LOCATION }}</p>
+        <p class="legal-updated mb-0">Última actualización: {{ fecha_actualizacion }}</p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="legal-body">
+            <div class="alert alert-warning" role="alert">
+                <strong>Importante:</strong> al usar la plataforma {{ config.APP_NAME }} usted acepta estos términos.
+                Si no está de acuerdo, por favor no utilice el servicio.
+            </div>
+
+            <nav class="legal-index mb-4" aria-label="Contenido">
+                <p class="fw-bold mb-2">Contenido</p>
+                <ol class="mb-0">
+                    <li><a href="#identificacion">Identificación del responsable</a></li>
+                    <li><a href="#aceptacion">Aceptación y capacidad</a></li>
+                    <li><a href="#servicio">Descripción del servicio</a></li>
+                    <li><a href="#cuentas">Registro y cuentas</a></li>
+                    <li><a href="#uso">Uso permitido y prohibiciones</a></li>
+                    <li><a href="#geolocalizacion">Geolocalización y seguimiento</a></li>
+                    <li><a href="#menores">Datos de niñas, niños y adolescentes</a></li>
+                    <li><a href="#propiedad">Propiedad intelectual</a></li>
+                    <li><a href="#pagos">Pagos y suscripciones</a></li>
+                    <li><a href="#responsabilidad">Disponibilidad y limitación de responsabilidad</a></li>
+                    <li><a href="#datos">Política de tratamiento de datos personales</a></li>
+                    <li><a href="#terceros">Enlaces y servicios de terceros</a></li>
+                    <li><a href="#terminacion">Suspensión y terminación</a></li>
+                    <li><a href="#modificaciones">Modificaciones</a></li>
+                    <li><a href="#ley">Ley aplicable y jurisdicción</a></li>
+                    <li><a href="#contacto">Contacto</a></li>
+                </ol>
+            </nav>
+
+            <h2 id="identificacion">1. Identificación del responsable</h2>
+            <p>
+                La plataforma {{ config.APP_NAME }} (en adelante, "la Plataforma") es un servicio tecnológico de
+                información para la gestión y el seguimiento de rutas escolares y empresariales, con domicilio en
+                {{ config.CONTACT_LOCATION }}. Canal de atención:
+                {% if config.CONTACT_EMAIL %}<strong>{{ config.CONTACT_EMAIL }}</strong>{% endif %}
+                {% if config.CONTACT_PHONE %}{% if config.CONTACT_EMAIL %}, {% endif %}<strong>{{ config.CONTACT_PHONE }}</strong>{% endif %}
+                {% if config.CONTACT_WHATSAPP %}{% if config.CONTACT_EMAIL or config.CONTACT_PHONE %}, {% endif %}WhatsApp <strong>+57 {{ config.CONTACT_WHATSAPP }}</strong>{% endif %}.
+            </p>
+
+            <h2 id="aceptacion">2. Aceptación y capacidad</h2>
+            <p>
+                El uso de la Plataforma implica la aceptación plena de estos Términos y Condiciones. Al registrarse,
+                ingresar o utilizar cualquier funcionalidad, usted declara tener capacidad legal para contratar y, si
+                actúa en representación de un menor de edad o de un tercero, contar con la autorización correspondiente.
+            </p>
+
+            <h2 id="servicio">3. Descripción del servicio</h2>
+            <p>
+                La Plataforma ofrece, entre otras, estas funcionalidades: portal para familias con visualización del
+                recorrido en tiempo real, control de asistencia de estudiantes, comunicación por ruta entre conductor y
+                familias, y herramientas de administración para la empresa o el conductor.
+            </p>
+            <p>
+                La Plataforma es una herramienta de apoyo informativo y tecnológico. No presta por sí misma el servicio
+                de transporte, no reemplaza la supervisión de los padres, acudientes o cuidadores, ni las obligaciones
+                legales de la empresa o del conductor de transporte.
+            </p>
+
+            <h2 id="cuentas">4. Registro y cuentas</h2>
+            <ul>
+                <li>El acceso al portal de familias se realiza mediante el PIN de la ruta entregado por la empresa o el conductor.</li>
+                <li>El acceso al panel del conductor requiere usuario y contraseña personales e intransferibles.</li>
+                <li>Usted es responsable de la confidencialidad de sus credenciales y de toda actividad realizada con ellas.</li>
+                <li>Debe informar de inmediato cualquier uso no autorizado o pérdida de credenciales a los canales de contacto.</li>
+            </ul>
+
+            <h2 id="uso">5. Uso permitido y prohibiciones</h2>
+            <p>Usted se compromete a usar la Plataforma de forma lícita. Queda prohibido, entre otros:</p>
+            <ul>
+                <li>Suplantar la identidad de otra persona o enviar mensajes falsos o engañosos.</li>
+                <li>Compartir el PIN de una ruta con personas ajenas a la comunidad educativa correspondiente.</li>
+                <li>Publicar contenido ofensivo, ilegal, discriminatorio, violento o que vulnere derechos de terceros.</li>
+                <li>Intentar acceder sin autorización a cuentas, datos o sistemas, o afectar su disponibilidad y seguridad.</li>
+                <li>Usar herramientas automatizadas para extraer datos, saturar el servicio o realizar ingeniería inversa.</li>
+                <li>Recopilar o divulgar datos personales de estudiantes o familias sin autorización.</li>
+            </ul>
+            <p>
+                El incumplimiento puede dar lugar a la suspensión o cancelación del acceso, sin perjuicio de las acciones
+                legales a que haya lugar.
+            </p>
+
+            <h2 id="geolocalizacion">6. Geolocalización y seguimiento</h2>
+            <p>
+                La Plataforma muestra la ubicación del vehículo de la ruta con fines de seguridad y tranquilidad de las
+                familias. La precisión y disponibilidad del mapa dependen de la señal GPS, de la red móvil y de servicios
+                de mapas de terceros, por lo que pueden presentarse retrasos, interrupciones o márgenes de error.
+            </p>
+            <p>
+                El conductor autoriza la transmisión de la ubicación del vehículo durante el recorrido. Esta información
+                se utiliza únicamente para las finalidades descritas en estos términos.
+            </p>
+
+            <h2 id="menores">7. Datos de niñas, niños y adolescentes</h2>
+            <p>
+                El tratamiento de datos de menores de edad se realiza con la autorización previa de sus padres, madres o
+                representantes legales, y en todo caso respetando su interés superior. Solo se solicitan los datos
+                necesarios para la prestación del servicio (por ejemplo, nombre, grado, colegio, parada y estado de
+                asistencia). Los acudientes pueden solicitar en cualquier momento el acceso, la actualización o la
+                supresión de estos datos a través de los canales de contacto.
+            </p>
+
+            <h2 id="propiedad">8. Propiedad intelectual</h2>
+            <p>
+                La marca, el diseño, el software, los textos, las imágenes y demás elementos de la Plataforma están
+                protegidos por las normas de propiedad intelectual. No se autoriza su uso, copia, modificación o
+                distribución sin permiso previo y escrito.
+            </p>
+
+            <h2 id="pagos">9. Pagos y suscripciones</h2>
+            <p>
+                Cuando aplique, el acceso a determinadas funciones para conductores o empresas puede estar sujeto a una
+                suscripción o plan de pago. Las condiciones, valores y periodos de vigencia se informan al momento de la
+                contratación. La falta de pago puede generar la suspensión de las funciones asociadas.
+            </p>
+
+            <h2 id="responsabilidad">10. Disponibilidad y limitación de responsabilidad</h2>
+            <p>
+                Se procura mantener la Plataforma disponible y segura, pero se ofrece "tal como está". No se garantiza que
+                funcione de forma ininterrumpida o libre de errores, ni que la información del mapa sea exacta en todo
+                momento.
+            </p>
+            <p>
+                En la medida permitida por la ley, {{ config.APP_NAME }} no será responsable por daños indirectos,
+                incidentales o derivados del uso o de la imposibilidad de uso de la Plataforma, ni por decisiones tomadas
+                con base en la información mostrada. Nada de lo anterior limita los derechos que la ley reconoce al
+                consumidor.
+            </p>
+
+            <h2 id="datos">11. Política de tratamiento de datos personales</h2>
+            <p>
+                En cumplimiento de la Ley 1581 de 2012, el Decreto 1377 de 2013 y demás normas concordantes de Colombia,
+                {{ config.APP_NAME }} informa:
+            </p>
+            <ul>
+                <li><strong>Finalidades:</strong> prestar el servicio de seguimiento y comunicación de rutas; gestionar
+                    cuentas de conductores y usuarios; gestionar la relación con familias y empresas; atender consultas,
+                    solicitudes y reclamos; y cumplir obligaciones legales.</li>
+                <li><strong>Datos tratados:</strong> datos de identificación y contacto, credenciales de acceso, datos de
+                    la ruta y del vehículo, ubicación del vehículo durante el recorrido, novedades de asistencia y
+                    mensajes enviados por el chat de la ruta.</li>
+                <li><strong>Autorización:</strong> al registrarse o usar la Plataforma usted autoriza el tratamiento de
+                    sus datos para las finalidades indicadas. Para menores de edad, la autorización la otorgan sus
+                    representantes legales.</li>
+                <li><strong>Seguridad:</strong> se adoptan medidas técnicas y administrativas razonables para proteger la
+                    información contra acceso, uso o divulgación no autorizados.</li>
+                <li><strong>Derechos del titular:</strong> conocer, actualizar y rectificar sus datos; solicitar prueba de
+                    la autorización; ser informado sobre el uso dado a sus datos; presentar quejas ante la Superintendencia
+                    de Industria y Comercio; revocar la autorización y solicitar la supresión cuando proceda; y acceder de
+                    forma gratuita a sus datos.</li>
+                <li><strong>Canales para ejercer sus derechos:</strong>
+                    {% if config.CONTACT_EMAIL %}{{ config.CONTACT_EMAIL }}{% endif %}
+                    {% if config.CONTACT_PHONE %}{% if config.CONTACT_EMAIL %} / {% endif %}{{ config.CONTACT_PHONE }}{% endif %}
+                    {% if config.CONTACT_WHATSAPP %}{% if config.CONTACT_EMAIL or config.CONTACT_PHONE %} / {% endif %}WhatsApp +57 {{ config.CONTACT_WHATSAPP }}{% endif %}.
+                    Las solicitudes se atenderán en los términos y plazos previstos por la ley.</li>
+            </ul>
+            <p>
+                Esta política rige desde la fecha de su publicación y puede ser consultada en cualquier momento en esta
+                misma página.
+            </p>
+
+            <h2 id="terceros">12. Enlaces y servicios de terceros</h2>
+            <p>
+                La Plataforma puede apoyarse en servicios de terceros (mapas, comunicaciones, alojamiento en la nube).
+                Dichos servicios tienen sus propias condiciones y políticas, sobre las cuales {{ config.APP_NAME }} no
+                tiene control.
+            </p>
+
+            <h2 id="terminacion">13. Suspensión y terminación</h2>
+            <p>
+                Se puede suspender o cancelar el acceso de forma temporal o definitiva cuando se incumplan estos términos,
+                exista riesgo de seguridad o se requiera por orden de autoridad competente. El usuario puede solicitar la
+                terminación de su cuenta a través de los canales de contacto.
+            </p>
+
+            <h2 id="modificaciones">14. Modificaciones</h2>
+            <p>
+                Estos Términos y Condiciones pueden actualizarse para reflejar cambios en el servicio o en la normativa
+                aplicable. La versión vigente será siempre la publicada en esta página, con la fecha de última
+                actualización indicada al inicio.
+            </p>
+
+            <h2 id="ley">15. Ley aplicable y jurisdicción</h2>
+            <p>
+                Estos términos se rigen por las leyes de la República de Colombia. Cualquier controversia se resolverá
+                ante las autoridades competentes, respetando siempre los derechos del consumidor.
+            </p>
+
+            <h2 id="contacto">16. Contacto</h2>
+            <p class="mb-4">
+                Para consultas, solicitudes o reclamos relacionados con estos términos o con el tratamiento de datos
+                personales, escríbenos por los canales de atención indicados en el punto 1 de este documento.
+                {% if config.CONTACT_HOURS %}<br>Horario de atención: {{ config.CONTACT_HOURS }}.{% endif %}
+            </p>
+
+            <p class="legal-updated">© {{ config.COMPANY_NAME }}. Todos los derechos reservados.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

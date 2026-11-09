@@ -166,6 +166,9 @@
     .driver-attendance-button--down:hover { background: #fff8e9; border-color: #bf7d17; color: #a76b0e; }
 
     .driver-lower-row { margin-top: 1.5rem; }
+    .driver-chat-head { align-items: flex-start; display: flex; gap: .6rem; justify-content: space-between; }
+    .driver-chat-clear { align-items: center; background: #fff; border: 1px solid var(--driver-line); border-radius: 999px; color: #b3382f; cursor: pointer; display: inline-flex; font-size: .7rem; font-weight: 800; gap: .35rem; padding: .42rem .72rem; transition: background .2s var(--driver-ease), border-color .2s var(--driver-ease); white-space: nowrap; }
+    .driver-chat-clear:hover { background: #fdf1f0; border-color: #e0b6b1; }
     .driver-chat-box { background: #f6f8f7; border: 1px solid #eef1ef; border-radius: var(--driver-radius-sm); height: 180px; margin: 1rem 0; overflow-y: auto; padding: .85rem; }
     .driver-chat-message { background: #fff; border-left: 3px solid var(--driver-accent); border-radius: 0 10px 10px 0; box-shadow: var(--driver-shadow-sm); color: #435159; font-size: .74rem; line-height: 1.35; padding: .55rem .7rem; }
     .driver-chat-message + .driver-chat-message { margin-top: .6rem; }
@@ -468,8 +471,17 @@
                     <div class="row g-4 h-100">
                         <div class="col-md-7 col-lg-12">
                             <section class="driver-card driver-chat-card">
-                                <div class="driver-card-label">Comunicación</div>
-                                <h2 class="driver-section-title mt-1">Novedades de la ruta</h2>
+                                <div class="driver-chat-head">
+                                    <div>
+                                        <div class="driver-card-label">Comunicación</div>
+                                        <h2 class="driver-section-title mt-1 mb-0">Novedades de la ruta</h2>
+                                    </div>
+                                    <form method="post" action="{{ url_for('conductor_bp.limpiar_chat', ruta_id=ruta.id) }}" onsubmit="return confirm('¿Borrar todos los mensajes del chat de esta ruta? Esta acción no se puede deshacer.');">
+                                        <button class="driver-chat-clear" type="submit" title="Borrar todos los mensajes del chat">
+                                            <i class="bi bi-trash3"></i><span>Limpiar chat</span>
+                                        </button>
+                                    </form>
+                                </div>
                                 <div id="chatMessages" class="driver-chat-box">
                                     {% for mensaje in mensajes_recientes %}
                                     <div class="driver-chat-message chat-message"><strong>{{ mensaje.remitente_nombre }}</strong><p>{{ mensaje.contenido }}</p></div>

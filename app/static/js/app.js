@@ -1,4 +1,6 @@
 (function () {
+    // Script principal del frontend. Centraliza mapas, GPS en vivo, chat,
+    // asistencia, PWA y ayudas compartidas entre portales.
     const socket = window.io ? window.io() : null;
     const OSRM_ROUTE_URL = "https://router.project-osrm.org/route/v1/driving/";
     const OSRM_TRIP_URL = "https://router.project-osrm.org/trip/v1/driving/";
@@ -10,6 +12,8 @@
     const GPS_MAX_RENDER_ACCURACY = 120;
     const GPS_JITTER_DISTANCE_METERS = 8;
     const appState = {
+        // Estado global reutilizado por varias vistas sin exponer variables
+        // sueltas por todo el archivo.
         driverWatchId: null,
         wakeLock: null,
         routeId: null,
@@ -60,6 +64,19 @@
 
     function isSecureLocationContext() {
         return window.isSecureContext || ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+    }
+
+    function clearChatFeed(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            return;
+        }
+        const isTrackingBox = container.classList.contains("chat-box");
+        container.innerHTML = "";
+        const placeholder = document.createElement("div");
+        placeholder.className = isTrackingBox ? "chat-box__empty" : "text-center pt-4 text-secondary small";
+        placeholder.textContent = isTrackingBox ? "Todavía no hay mensajes en esta ruta." : "Sin mensajes recientes.";
+        container.appendChild(placeholder);
     }
 
     function appendChatMessage(container, author, content) {
@@ -230,6 +247,8 @@
     }
 
     function createMap(node) {
+        // Fabrica comun para los tres mapas de la app: conductor, familias y
+        // administracion. Devuelve un contexto con capas y banderas compartidas.
         if (!node || !window.L) {
             return null;
         }
@@ -363,6 +382,8 @@
         };
 
         function syncCenterControls() {
+            // El boton para centrar solo se habilita cuando ya existe una
+            // ubicacion valida del bus en el mapa.
             const disabled = !mapContext.hasLocation;
             if (mapContext.centerButton) {
                 mapContext.centerButton.disabled = disabled;
@@ -582,6 +603,8 @@
     }
 
     function renderRoutePlan(mapContext, payload) {
+        // Convierte el plan que llega del backend en marcadores, destino y
+        // metadatos listos para dibujar y recalcular.
         if (!mapContext || !payload) {
             return;
         }
@@ -790,6 +813,8 @@
     }
 
     function buildMatchUrl(points) {
+        // OSRM Match recibe la traza cruda y la ajusta a calles reales usando
+        // coordenadas, precision del GPS y, si existe, la hora de captura.
         const coordinates = points
             .map(function (point) {
                 return `${point.lng},${point.lat}`;
@@ -844,6 +869,8 @@
     }
 
     function refreshRecordedTrace(mapContext, shouldFitBounds) {
+        // Intenta ajustar la traza real a la calle con OSRM Match. Si no hay
+        // respuesta util, el mapa conserva el recorrido crudo como respaldo.
         if (!mapContext) {
             return;
         }
@@ -893,6 +920,8 @@
     }
 
     function loadRouteHistory(mapContext, rutaId, pin, onError) {
+        // Recupera el recorrido ya guardado para que el mapa no arranque vacio
+        // cuando alguien entra a mitad de la jornada.
         const endpoint = `/tracking/api/ruta/${rutaId}/recorrido?pin=${encodeURIComponent(pin)}`;
         fetch(endpoint)
             .then(function (response) {
@@ -924,6 +953,8 @@
     }
 
     function loadRoutePlan(mapContext, rutaId, pin, onError) {
+        // Carga paradas, destino y origen base; despues el frontend decide si
+        // recalcula desde el origen fijo o desde la ubicacion viva del bus.
         const endpoint = `/tracking/api/ruta/${rutaId}/plan?pin=${encodeURIComponent(pin)}`;
         fetch(endpoint)
             .then(function (response) {
@@ -1018,6 +1049,8 @@
     }
 
     function getCurrentOrigin(mapContext) {
+        // La prioridad es: GPS actual del bus, origen configurado en backend y,
+        // como ultimo recurso, el marcador ya visible en el mapa.
         if (mapContext && Array.isArray(mapContext.latestLocation)) {
             return mapContext.latestLocation;
         }
@@ -1055,6 +1088,8 @@
     }
 
     function refreshStopProgress(mapContext) {
+        // Marca una parada como atendida cuando el bus pasa suficientemente
+        // cerca, para sincronizar iconos, HUD y avisos de voz.
         if (!mapContext || !Array.isArray(mapContext.latestLocation)) {
             return;
         }
@@ -1071,6 +1106,8 @@
     }
 
     function updateNavigationSummary(mapContext) {
+        // Mantiene el resumen textual del conductor alineado con la siguiente
+        // parada real y dispara avisos de voz oportunos.
         if (!mapContext || !mapContext.isDriverMap) {
             return;
         }
@@ -1102,6 +1139,8 @@
     }
 
     function getNavigationWaypoints(mapContext) {
+        // Construye la secuencia que se manda a OSRM: origen, paradas activas o
+        // parada fijada manualmente y, si aplica, destino final.
         if (!mapContext) {
             return [];
         }
@@ -1133,6 +1172,8 @@
     }
 
     function buildTripUrl(origin, stops, destination) {
+        // OSRM Trip devuelve un orden optimizado de waypoints; con ese orden se
+        // reorganiza la lista de paradas del mapa y del HUD.
         const coordinates = [origin]
             .concat(stops.map(function (stop) {
                 return stop.coordenadas;
@@ -1179,6 +1220,8 @@
     }
 
     function optimizeStopSequence(mapContext) {
+        // Reordena las paradas a partir del punto real del bus para que la
+        // navegacion responda al recorrido actual y no solo al origen guardado.
         if (!mapContext || !Array.isArray(mapContext.stops) || mapContext.stops.length < 2) {
             return Promise.resolve();
         }
@@ -1301,6 +1344,8 @@
     }
 
     function shouldRenderGpsPoint(mapContext, payload) {
+        // Filtra lecturas demasiado imprecisas para evitar saltos bruscos en la
+        // interfaz cuando el GPS pierde calidad temporalmente.
         if (!mapContext || !payload) {
             return false;
         }
@@ -1330,6 +1375,7 @@
     }
 
     function updateMapLocation(mapContext, payload) {
+        // Un solo punto GPS actualiza marcador, traza real y ruta sugerida.
         if (!mapContext) {
             return;
         }
@@ -1379,12 +1425,16 @@
         if (!socket || !rutaId || !pin) {
             return;
         }
+        // Se guarda la sala activa para reingresar automaticamente al
+        // reconectar Socket.IO sin perder contexto.
         appState.routeId = rutaId;
         appState.routePin = pin;
         socket.emit("room:join", { ruta_id: rutaId, pin: pin });
     }
 
     function setupTrackingPage() {
+        // Inicializa la sala de seguimiento de familias con mapa, chat,
+        // asistencias y subscripcion a eventos en vivo de su ruta.
         const mapNode = document.getElementById("trackingMap");
         if (!mapNode) {
             return;
@@ -1432,6 +1482,11 @@
         socket.on("chat:new_message", function (payload) {
             if (payload.ruta_id === rutaId) {
                 appendChatMessage(document.getElementById("chatMessages"), payload.remitente_nombre, payload.contenido);
+            }
+        });
+        socket.on("chat:cleared", function (payload) {
+            if (payload.ruta_id === rutaId) {
+                clearChatFeed("chatMessages");
             }
         });
         socket.on("tracking:plan_updated", function (payload) {
@@ -1502,6 +1557,8 @@
     }
 
     function setupAdminRouteMap() {
+        // El panel admin usa socket y sondeo como doble respaldo para no perder
+        // visibilidad de la ruta si el navegador deja pasar algun evento.
         const mapNode = document.getElementById("adminRouteMap");
         if (!mapNode) {
             return;
@@ -1616,10 +1673,14 @@
     }
 
     function registerServiceWorker() {
+        // El registro se difiere hasta `load` para no competir con el primer
+        // render y aun asi dejar la PWA lista.
         if (!("serviceWorker" in navigator)) {
             return;
         }
         window.addEventListener("load", function () {
+            // Se registra al terminar la carga para no competir con el render
+            // inicial, pero dejando lista la experiencia PWA.
             navigator.serviceWorker.register("/sw.js").catch(function () {
                 /* Sin service worker la app sigue funcionando en linea. */
             });
@@ -1627,6 +1688,8 @@
     }
 
     function setupPwaInstall() {
+        // Muestra instalacion nativa cuando el navegador lo soporta y, en caso
+        // contrario, explica el flujo manual segun la plataforma.
         const containers = document.querySelectorAll("[data-pwa-install]");
         if (!containers.length) {
             return;
@@ -1719,6 +1782,8 @@
             if (!sender.value.trim() || !message.value.trim()) {
                 return;
             }
+            // El mensaje viaja por socket para que todos los conectados a la
+            // misma ruta lo vean sin recargar.
             socket.emit("chat:message", {
                 ruta_id: rutaId,
                 pin: pin,
@@ -1731,6 +1796,8 @@
     }
 
     async function requestWakeLock() {
+        // Evita que el telefono apague la pantalla y pause el GPS mientras el
+        // conductor esta transmitiendo el recorrido.
         if (!("wakeLock" in navigator)) {
             return;
         }
@@ -1818,6 +1885,7 @@
     }
 
     function emitDriverLocationUpdate(rutaId, position) {
+        // Traduce la lectura del navegador al payload que espera el backend.
         if (!position || !position.coords) {
             return false;
         }
@@ -1843,6 +1911,8 @@
     }
 
     async function startDriverTracking(rutaId) {
+        // Activa el flujo completo del conductor: validacion de entorno,
+        // permisos, wake lock y envio continuo por `watchPosition`.
         if (!socket || !socket.connected) {
             setGpsStatus("warning", "Reconectando GPS");
             setDriverNotice("Estamos reconectando la ruta. El GPS se activará cuando vuelva la conexión.");
@@ -1896,6 +1966,8 @@
     }
 
     function setupHousePlacementControls(mapContext) {
+        // Permite ubicar o corregir manualmente las casas desde el mapa del
+        // conductor y recalcular la ruta en cuanto se guarda una posicion.
         const select = document.getElementById("housePlacementSelect");
         const button = document.getElementById("housePlacementButton");
         const hint = document.getElementById("housePlacementHint");
@@ -1961,6 +2033,8 @@
     }
 
     function renderDriverHud(mapContext) {
+        // Resume la cola de paradas para que el conductor tenga contexto rapido
+        // sin depender de abrir listas adicionales.
         if (!mapContext || !mapContext.isDriverMap) {
             return;
         }
@@ -2065,6 +2139,8 @@
     }
 
     function setupDriverMapExpand(mapContext) {
+        // Cambia el mapa a una vista inmersiva tipo navegacion, pero reutiliza
+        // el mismo contexto y los mismos controles ya montados.
         if (!mapContext || !mapContext.isDriverMap) {
             return;
         }
@@ -2127,6 +2203,7 @@
     }
 
     function setupDriverControls() {
+        // Reune toda la logica exclusiva del portal del conductor.
         const driverPanel = document.getElementById("driverPanel");
         if (!driverPanel) {
             return;
@@ -2229,6 +2306,11 @@
                 appendChatMessage(document.getElementById("chatMessages"), payload.remitente_nombre, payload.contenido);
             }
         });
+        socket.on("chat:cleared", function (payload) {
+            if (payload.ruta_id === rutaId) {
+                clearChatFeed("chatMessages");
+            }
+        });
         socket.on("tracking:plan_updated", function (payload) {
             if (payload.ruta_id === rutaId) {
                 loadRoutePlan(mapContext, rutaId, pin, function () {
@@ -2239,6 +2321,8 @@
     }
 
     function setupSocketErrors() {
+        // Listeners globales de conexion y errores para reenganchar la sala y
+        // mantener informado al conductor si la red cae.
         if (!socket) {
             return;
         }
@@ -2285,6 +2369,8 @@
     }
 
     function setupHeroCarousel() {
+        // Se respeta `prefers-reduced-motion` para no forzar animaciones cuando
+        // el usuario prefiere una experiencia mas estable.
         const carousel = document.querySelector("[data-hero-carousel]");
         if (!carousel || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
             return;
@@ -2319,6 +2405,8 @@
     }
 
     function parseSchoolCatalog() {
+        // El catalogo viaja embebido en el HTML para poder filtrar colegios sin
+        // hacer otra peticion al servidor.
         const node = document.getElementById("schoolCatalogData");
         if (!node) {
             return null;
@@ -2402,6 +2490,8 @@
     }
 
     function setupSchoolCatalogForms() {
+        // Sincroniza las opciones de colegio con la ciudad elegida para que los
+        // formularios no muestren sugerencias fuera del municipio.
         const catalog = parseSchoolCatalog();
         const datalist = document.getElementById("colegiosCatalogo");
         if (!catalog) {
@@ -2454,6 +2544,8 @@
     });
 
     document.addEventListener("DOMContentLoaded", function () {
+        // Cada inicializador valida si su vista existe, por eso todos se
+        // ejecutan aqui sin romper paginas que no usan cierta funcion.
         if (window.speechSynthesis) {
             setVoiceStatus("Lista");
         } else {

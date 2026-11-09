@@ -58,6 +58,17 @@ body {
     gap: 0.35rem;
 }
 
+.footer-link {
+    color: var(--rx-text) !important;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.footer-link:hover {
+    text-decoration: underline;
+}
+
 .nav-link {
     font-weight: 600;
     text-transform: uppercase;

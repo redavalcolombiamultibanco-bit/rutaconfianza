@@ -400,6 +400,27 @@ def ubicar_estudiante(estudiante_id):
     )
 
 
+@conductor_bp.route("/ruta/<int:ruta_id>/chat/limpiar", methods=["POST"])
+def limpiar_chat(ruta_id):
+    """Vacía el chat de la ruta para que el conductor empiece con la bandeja limpia."""
+    conductor = _conductor_actual()
+    if conductor is None:
+        return redirect(url_for("conductor_bp.ingresar"))
+
+    ruta = Ruta.query.filter_by(id=ruta_id, conductor_id=conductor.id).first_or_404()
+    try:
+        MensajeChat.query.filter_by(ruta_id=ruta.id).delete(synchronize_session=False)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash("No fue posible limpiar el chat de la ruta.", "danger")
+    else:
+        # Se avisa a la sala para que las familias tambien vacien su chat.
+        socketio.emit("chat:cleared", {"ruta_id": ruta.id}, to=ruta.socket_room)
+        flash("El chat de la ruta quedó limpio.", "success")
+    return redirect(url_for("conductor_bp.dashboard", ruta_id=ruta.id))
+
+
 def _conductor_actual():
     conductor_id = session.get("conductor_id")
     if conductor_id is None:

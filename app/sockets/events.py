@@ -27,6 +27,8 @@ def register_socket_events(socketio):
 
     @socketio.on("room:join")
     def handle_room_join(data):
+        # Cada cliente se une a la sala de su ruta para recibir solo su propio
+        # GPS, asistencias y mensajes en tiempo real.
         ruta = _resolve_route(data)
         if not ruta:
             return _emit_error("No fue posible identificar la ruta para unirse a la sala.")
@@ -66,6 +68,8 @@ def register_socket_events(socketio):
         ruta.velocidad_actual = None
         ruta.rumbo_actual = None
         ruta.ultima_ubicacion_en = None
+        # Al iniciar una nueva jornada se limpia el rastro anterior para que el
+        # mapa solo muestre el recorrido actual.
         UbicacionRuta.query.filter_by(ruta_id=ruta.id).delete(synchronize_session=False)
         _commit_changes()
         emit(
@@ -118,6 +122,8 @@ def register_socket_events(socketio):
         rumbo = _normalize_heading(data.get("heading"))
         capturada_en = _parse_client_timestamp(data.get("captured_at"))
 
+        # Estos filtros reducen saltos falsos y lecturas de baja calidad antes
+        # de persistir la ubicacion y emitirla a los clientes.
         if _should_ignore_imprecise_fix(ruta, precision):
             return
         if _is_implausible_jump(ruta, latitud, longitud, capturada_en, precision):
@@ -174,7 +180,10 @@ def register_socket_events(socketio):
             )
             db.session.add(asistencia)
         asistencia.estado = estado
-        asistencia.observacion = data.get("observacion")
+        observacion = data.get("observacion")
+        if observacion is not None:
+            observacion = str(observacion).strip()[:255] or None
+        asistencia.observacion = observacion
         if estado == EstadoAsistencia.SUBIO:
             asistencia.hora_subida = datetime.utcnow()
         if estado == EstadoAsistencia.BAJO:
@@ -187,8 +196,8 @@ def register_socket_events(socketio):
         ruta = _resolve_route(data)
         if not ruta:
             return _emit_error("No se encontro la ruta para enviar el mensaje.")
-        contenido = (data.get("contenido") or "").strip()
-        remitente_nombre = (data.get("remitente_nombre") or "Invitado").strip()
+        contenido = (data.get("contenido") or "").strip()[:1000]
+        remitente_nombre = (data.get("remitente_nombre") or "Invitado").strip()[:60]
         remitente_tipo = _parse_sender_type(data.get("remitente_tipo"))
         if not contenido:
             return _emit_error("El mensaje no puede estar vacio.")
@@ -216,6 +225,8 @@ def register_socket_events(socketio):
 
 
 def _resolve_route(data):
+    # La combinacion ruta_id + PIN evita que alguien se una por accidente a una
+    # ruta distinta aunque conozca solo uno de los dos datos.
     if not isinstance(data, dict):
         return None
     ruta_id = data.get("ruta_id")
@@ -226,6 +237,8 @@ def _resolve_route(data):
 
 
 def _require_route_driver(ruta):
+    # Solo el conductor autenticado y asignado puede emitir eventos sensibles
+    # como GPS, cambios de asistencia o inicio/fin del recorrido.
     conductor_id = session.get("conductor_id")
     if (
         conductor_id != ruta.conductor_id
@@ -294,6 +307,8 @@ def _should_ignore_imprecise_fix(ruta, precision):
 
 
 def _smooth_location(ruta, latitud, longitud, precision):
+    # Mezcla ligeramente la lectura nueva con la anterior cuando el GPS reporta
+    # poca precision y el cambio es pequeno. Asi se reduce el "temblor" visual.
     if (
         ruta.latitud_actual is None
         or ruta.longitud_actual is None
@@ -318,6 +333,8 @@ def _smooth_location(ruta, latitud, longitud, precision):
 
 
 def _is_implausible_jump(ruta, latitud, longitud, capturada_en, precision):
+    # Descarta saltos imposibles para una buseta escolar: por ejemplo cambios de
+    # cientos de metros en pocos segundos con mala precision.
     if (
         ruta.latitud_actual is None
         or ruta.longitud_actual is None

@@ -1,9 +1,16 @@
 """Rutas del modulo comercial."""
+from datetime import datetime
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from app import db
 from app.models import Conductor, EstadoSuscripcion, MensajeContacto, SolicitudConductor
 
 comercial_bp = Blueprint("comercial_bp", __name__)
+
+MESES_EN_ESPANOL = (
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+)
 
 
 @comercial_bp.route("/")
@@ -35,8 +42,20 @@ def directorio():
     return render_template("comercial/directorio.html", conductores=conductores)
 
 
+@comercial_bp.route("/terminos")
+def terminos():
+    """Publica los terminos y condiciones y la politica de tratamiento de datos."""
+    hoy = datetime.utcnow()
+    fecha_actualizacion = f"{hoy.day} de {MESES_EN_ESPANOL[hoy.month - 1]} de {hoy.year}"
+    return render_template("comercial/terminos.html", fecha_actualizacion=fecha_actualizacion)
+
+
 @comercial_bp.route("/registro-conductor", methods=["POST"])
 def registro_conductor():
+    if not request.form.get("acepta_terminos"):
+        flash("Debes aceptar los términos y condiciones y la política de tratamiento de datos.", "warning")
+        return redirect(url_for("comercial_bp.home") + "#contacto")
+
     solicitud = SolicitudConductor(
         nombres=request.form.get("nombres", "").strip(),
         apellidos=request.form.get("apellidos", "").strip(),
@@ -44,7 +63,7 @@ def registro_conductor():
         email=request.form.get("email", "").strip(),
         nombre_vehiculo=request.form.get("nombre_vehiculo", "").strip(),
         placa_vehiculo=request.form.get("placa_vehiculo", "").strip().upper(),
-        capacidad_vehiculo=request.form.get("capacidad_vehiculo") or None,
+        capacidad_vehiculo=request.form.get("capacidad_vehiculo", type=int),
         ciudad=request.form.get("ciudad", "").strip(),
         comentario=request.form.get("comentario", "").strip(),
     )
@@ -65,6 +84,10 @@ def contacto():
 
     if not nombre or not mensaje or not (email or telefono):
         flash("Completa tu nombre, el mensaje y al menos un dato de contacto.", "warning")
+        return redirect(url_for("comercial_bp.home") + "#contacto")
+
+    if not request.form.get("acepta_terminos"):
+        flash("Debes aceptar los términos y condiciones y la política de tratamiento de datos.", "warning")
         return redirect(url_for("comercial_bp.home") + "#contacto")
 
     db.session.add(

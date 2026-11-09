@@ -170,6 +170,9 @@
             <div class="d-flex flex-wrap gap-2 mt-3">
                 <a class="btn btn-sm btn-outline-primary rounded-pill" href="{{ url_for('admin_bp.estudiantes', ruta_id=ruta.id) }}">Ver estudiantes</a>
                 <a class="btn btn-sm btn-outline-secondary rounded-pill" href="{{ url_for('tracking_bp.sala_ruta', pin=ruta.pin_acceso) }}" target="_blank" rel="noopener">Portal familias</a>
+                <form method="post" action="{{ url_for('admin_bp.limpiar_chat_ruta', ruta_id=ruta.id) }}" onsubmit="return confirm('¿Borrar todos los mensajes del chat de esta ruta? Esta acción no se puede deshacer.');">
+                    <button class="btn btn-sm btn-outline-warning rounded-pill" type="submit"><i class="bi bi-trash3 me-1"></i>Limpiar chat</button>
+                </form>
                 <form method="post" action="{{ url_for('admin_bp.eliminar_ruta', ruta_id=ruta.id) }}" onsubmit="return confirm('Se eliminaran los estudiantes y sus asistencias. ¿Continuar?');">
                     <button class="btn btn-sm btn-outline-danger rounded-pill" type="submit">Eliminar</button>
                 </form>

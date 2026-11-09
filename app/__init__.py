@@ -12,34 +12,62 @@ from werkzeug.security import generate_password_hash
 
 db = SQLAlchemy()
 migrate = Migrate()
-socketio = SocketIO(async_mode="threading", cors_allowed_origins="*")
+socketio = SocketIO(async_mode="threading")
 
 
 def create_app(config_object=None):
     """Crea y configura la aplicacion Flask usando Application Factory."""
     app = Flask(__name__, instance_relative_config=False)
+    # Primero cargamos una base segura para desarrollo y luego, si existe,
+    # montamos encima la configuracion especifica del entorno actual.
     _load_default_config(app)
     if config_object:
         app.config.from_object(config_object)
+    # Estas rutas viven en la factory porque deben existir incluso si algun
+    # blueprint aun no se ha cargado o se implementa despues.
     _register_health_routes(app)
     _register_pwa_routes(app)
     _register_seo_routes(app)
+    _register_security_headers(app)
     db.init_app(app)
     migrate.init_app(app, db)
     socketio.init_app(
         app,
         async_mode=app.config.get("SOCKETIO_ASYNC_MODE", "threading"),
-        cors_allowed_origins=app.config.get("SOCKETIO_CORS_ALLOWED_ORIGINS", "*"),
+        cors_allowed_origins=app.config.get("SOCKETIO_CORS_ALLOWED_ORIGINS"),
     )
     _register_blueprints(app)
     _register_template_globals(app)
     from app.sockets.events import register_socket_events
     register_socket_events(socketio)
     with app.app_context():
+        # `create_all` cubre bases nuevas; el ajuste de esquema completa
+        # columnas agregadas recientemente en SQLite local sin romper arranques.
         db.create_all()
         _ensure_runtime_schema()
-        _ensure_default_admin_user()
+        _ensure_default_admin_user(app)
     return app
+
+
+def _register_security_headers(app):
+    """Agrega cabeceras defensivas a todas las respuestas."""
+
+    @app.after_request
+    def _set_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        # Se permite geolocalizacion (mapa en vivo) pero se bloquea lo demas.
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "geolocation=(self), camera=(), microphone=(), payment=()",
+        )
+        if not app.config.get("DEBUG"):
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains",
+            )
+        return response
 
 
 def _register_health_routes(app):
@@ -79,6 +107,7 @@ def _register_seo_routes(app):
         ("/directorio", "0.8"),
         ("/tracking/", "0.7"),
         ("/conductor/ingresar", "0.7"),
+        ("/terminos", "0.4"),
     )
 
     @app.get("/robots.txt")
@@ -126,6 +155,14 @@ def _register_seo_routes(app):
         app.add_url_rule(verification_path, endpoint_name, google_site_verification_file)
 
 
+def _socket_cors_origins():
+    """Origenes permitidos para Socket.IO; sin configurar queda en mismo origen."""
+    raw = os.getenv("SOCKETIO_CORS_ALLOWED_ORIGINS", "").strip()
+    if not raw or raw in {"*", "self"}:
+        return None
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 def _load_default_config(app):
     """Carga una configuracion minima para desarrollo local."""
     base_dir = Path(app.root_path).resolve().parent
@@ -140,7 +177,10 @@ def _load_default_config(app):
         ALLOWED_IMAGE_EXTENSIONS={"png", "jpg", "jpeg", "webp", "gif"},
         BACKUP_FOLDER=os.getenv("BACKUP_FOLDER", str(base_dir / "respaldos")),
         SOCKETIO_ASYNC_MODE=os.getenv("SOCKETIO_ASYNC_MODE", "threading"),
-        SOCKETIO_CORS_ALLOWED_ORIGINS=os.getenv("SOCKETIO_CORS_ALLOWED_ORIGINS", "*"),
+        SOCKETIO_CORS_ALLOWED_ORIGINS=_socket_cors_origins(),
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=False,
         APP_NAME="Ruta Confianza",
         COMPANY_NAME="Ruta Confianza",
         BRAND_LOGO="images/logo-ruta-confianza.jpg",
@@ -184,6 +224,8 @@ def _register_blueprints(app):
             if blueprint is not None:
                 app.register_blueprint(blueprint)
         except ImportError:
+            # Permite crecer el proyecto por modulos sin bloquear el inicio si
+            # un blueprint todavia no fue creado o esta temporalmente ausente.
             app.logger.info("Blueprint pendiente de implementacion: %s", module_name)
 
 
@@ -200,9 +242,39 @@ def _register_template_globals(app):
         return {"site_base_url": _seo_base_url(app)}
 
 
-def _ensure_default_admin_user():
-    """Garantiza un acceso administrativo inicial para desarrollo local."""
+def _ensure_default_admin_user(app):
+    """Crea un acceso administrativo inicial de forma controlada.
+
+    - Si existen ADMIN_USERNAME y ADMIN_PASSWORD se usa esa credencial.
+    - En produccion NUNCA se crea un usuario con clave conocida; solo avisa.
+    - En desarrollo local se mantiene el usuario demo para no perder acceso.
+    """
     from app.models import AdminUser
+
+    env_username = os.getenv("ADMIN_USERNAME", "").strip()
+    env_password = os.getenv("ADMIN_PASSWORD", "")
+
+    if env_username and env_password:
+        if AdminUser.query.filter_by(username=env_username).first() is None:
+            db.session.add(
+                AdminUser(
+                    username=env_username,
+                    nombre=env_username,
+                    password_hash=generate_password_hash(env_password),
+                    activo=True,
+                )
+            )
+            db.session.commit()
+        return
+
+    es_produccion = not app.config.get("DEBUG", False)
+    if es_produccion:
+        if AdminUser.query.count() == 0:
+            app.logger.warning(
+                "No hay administradores y no se definieron ADMIN_USERNAME/ADMIN_PASSWORD. "
+                "Crea un administrador para poder entrar al panel."
+            )
+        return
 
     default_username = "julio"
     default_password = "julio21200521"
@@ -210,6 +282,8 @@ def _ensure_default_admin_user():
     if existing_user is not None:
         return
 
+    # Solo se crea si no existe; asi evitamos duplicados o sobreescribir claves
+    # cuando la base ya fue inicializada manualmente.
     db.session.add(
         AdminUser(
             username=default_username,
@@ -226,6 +300,8 @@ def _ensure_runtime_schema():
     if db.engine.dialect.name != "sqlite":
         return
 
+    # Este mapa funciona como una migracion ligera para entornos locales donde
+    # la base ya existe pero aun no se ejecutaron migraciones formales.
     schema_updates = {
         "rutas": {
             "ciudad": "ALTER TABLE rutas ADD COLUMN ciudad VARCHAR(80)",
@@ -259,4 +335,6 @@ def _ensure_runtime_schema():
             existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
             for column_name, statement in statements.items():
                 if column_name not in existing_columns:
+                    # Solo se agrega la columna faltante; si ya existe no se toca
+                    # nada para mantener el arranque idempotente.
                     connection.execute(text(statement))

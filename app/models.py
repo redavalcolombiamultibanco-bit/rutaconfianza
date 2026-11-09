@@ -4,6 +4,8 @@ import enum
 from app import db
 
 
+# Los enum centralizan estados validos y evitan cadenas "sueltas" repetidas
+# en consultas, formularios y eventos en tiempo real.
 class EstadoSuscripcion(enum.Enum):
     PENDIENTE = "pendiente"
     ACTIVA = "activa"
@@ -33,6 +35,8 @@ class TipoRemitenteChat(enum.Enum):
 
 
 class TimestampMixin:
+    # Se reutiliza en varios modelos para no repetir las mismas columnas de
+    # auditoria en cada tabla.
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -116,6 +120,8 @@ class Conductor(TimestampMixin, db.Model):
 
     @property
     def puede_transmitir_gps(self):
+        # El GPS solo se habilita si la cuenta esta activa, el permiso fue
+        # habilitado desde administracion y la suscripcion sigue vigente.
         return self.activo and self.gps_habilitado and self.suscripcion_vigente
 
 
@@ -182,9 +188,12 @@ class Ruta(TimestampMixin, db.Model):
 
     @property
     def socket_room(self):
+        # Cada ruta tiene una sala propia para que familias, panel admin y
+        # conductor escuchen solo los eventos que les corresponden.
         return f"ruta:{self.id}"
 
     def to_tracking_payload(self):
+        # Payload corto para eventos frecuentes de Socket.IO.
         return {
             "ruta_id": self.id,
             "codigo": self.codigo,
@@ -202,6 +211,7 @@ class Ruta(TimestampMixin, db.Model):
         }
 
     def to_navigation_payload(self):
+        # Payload mas rico para dibujar el plan completo de la ruta en el mapa.
         return {
             "ruta_id": self.id,
             "nombre": self.nombre,
@@ -290,6 +300,8 @@ class Estudiante(TimestampMixin, db.Model):
         return f"{self.nombres} {self.apellidos}".strip()
 
     def to_stop_payload(self):
+        # Esta estructura alimenta tanto la interfaz del conductor como el
+        # portal de familias al renderizar las paradas en el mapa.
         return {
             "id": self.id,
             "nombre": self.nombre_completo,
@@ -324,6 +336,7 @@ class Asistencia(TimestampMixin, db.Model):
     observacion = db.Column(db.String(255), nullable=True)
 
     def to_socket_payload(self):
+        # Se emite por socket para actualizar tableros sin recargar la pagina.
         return {
             "asistencia_id": self.id,
             "ruta_id": self.ruta_id,
@@ -347,6 +360,8 @@ class MensajeChat(TimestampMixin, db.Model):
     contenido = db.Column(db.Text, nullable=False)
 
     def to_socket_payload(self):
+        # El chat comparte un formato simple y consistente para todos los
+        # clientes conectados a la misma ruta.
         return {
             "mensaje_id": self.id,
             "ruta_id": self.ruta_id,
