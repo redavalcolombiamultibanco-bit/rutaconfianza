@@ -51,6 +51,53 @@ body {
     background: #ffffff;
 }
 
+.site-footer__socials {
+    align-items: center;
+    display: flex;
+    gap: 0.55rem;
+}
+
+.site-footer__social-button {
+    align-items: center;
+    background: #f1f3f5;
+    border: 1px solid #e2e8f0;
+    border-radius: 50%;
+    color: #64748b;
+    display: inline-flex;
+    height: 42px;
+    justify-content: center;
+    padding: 0;
+    text-decoration: none;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    width: 42px;
+}
+
+.site-footer__social-button i {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.site-footer__social-button--youtube i,
+.site-footer__social-button--facebook i,
+.site-footer__social-button--instagram i,
+.site-footer__social-button--tiktok i,
+.site-footer__social-button--whatsapp i {
+    color: #64748b;
+}
+
+.site-footer__social-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+a.site-footer__social-button:hover,
+a.site-footer__social-button:focus-visible {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #334155;
+    transform: translateY(-2px);
+}
+
 .site-footer__meta {
     align-items: flex-end;
     display: flex;
@@ -1694,6 +1741,13 @@ section[id] {
     text-decoration: none;
     width: min(290px, calc(100vw - 26px));
     z-index: 1250;
+}
+
+.floating-help-button.is-hidden-near-footer {
+    animation-play-state: paused;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
 }
 
 .floating-help-button:hover,
@@ -3704,5 +3758,93 @@ body.rx-app-view {
 
     .tracking-live--modern .tracking-live__chat-form textarea.form-control {
         min-height: 96px;
+    }
+}
+
+/* ============================================================
+   Pantallas en horizontal (telefono o tablet): se aprovecha el
+   ancho y el mapa no queda mas alto que la pantalla.
+   ============================================================ */
+@media (orientation: landscape) and (max-width: 1199.98px) {
+    .tracking-live--modern {
+        padding-bottom: 1.5rem !important;
+        padding-top: 0.9rem !important;
+    }
+
+    .tracking-live--modern .tracking-live__hero-card {
+        padding: 0.9rem 1.1rem;
+    }
+
+    .tracking-live--modern .tracking-live__title {
+        font-size: 1.6rem;
+    }
+
+    /* Mapa a la izquierda y panel a la derecha para aprovechar el ancho. */
+    .tracking-live--modern .row.align-items-start > .col-xl-8 {
+        flex: 0 0 62%;
+        max-width: 62%;
+        width: 62%;
+    }
+
+    .tracking-live--modern .row.align-items-start > .col-xl-4 {
+        flex: 0 0 38%;
+        max-width: 38%;
+        width: 38%;
+    }
+
+    /* Las tarjetas de estado se mantienen en una sola fila para no alargar la pantalla. */
+    .tracking-live--modern .tracking-live__status-row > .col-md-4 {
+        flex: 0 0 33.3333%;
+        max-width: 33.3333%;
+        width: 33.3333%;
+    }
+
+    .tracking-live--modern .tracking-map {
+        height: calc(100vh - 250px);
+        max-height: none;
+        min-height: 200px;
+    }
+
+    .tracking-live--modern .tracking-live__panel--modern {
+        max-height: calc(100vh - 230px);
+        overflow: auto;
+    }
+}
+
+/* Imagen de marca en la seccion de contacto; el formulario conserva su estilo. */
+#contacto {
+    background-image:
+        linear-gradient(90deg, rgba(8, 22, 38, 0.12), rgba(8, 22, 38, 0.2)),
+        url("../images/contacto-fondo.jpg");
+    background-position: center;
+    background-size: cover;
+}
+
+#contacto .section-title span {
+    color: #ffcf33;
+}
+
+#contacto .section-title h2,
+#contacto .contact-info-item strong {
+    color: #ffffff;
+}
+
+#contacto .contact-info-item i {
+    color: #ffcf33;
+}
+
+#contacto .contact-info-item span,
+#contacto .contact-info-item a,
+#contacto .contact-info__note {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+#contacto .contact-info-item a:hover {
+    color: #ffdc57;
+}
+
+@media (max-width: 575.98px) {
+    #contacto {
+        background-position: 34% center;
     }
 }

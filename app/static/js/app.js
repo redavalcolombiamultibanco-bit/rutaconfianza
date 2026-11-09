@@ -2443,6 +2443,36 @@
         });
     }
 
+    function setupFloatingHelpVisibility() {
+        const helpButton = document.querySelector(".floating-help-button");
+        const footer = document.querySelector(".site-footer");
+        if (!helpButton || !footer) {
+            return;
+        }
+
+        const setFooterVisibility = function (isVisible) {
+            helpButton.classList.toggle("is-hidden-near-footer", isVisible);
+        };
+
+        if ("IntersectionObserver" in window) {
+            const observer = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    setFooterVisibility(entry.isIntersecting);
+                });
+            }, { threshold: 0 });
+            observer.observe(footer);
+            return;
+        }
+
+        const checkFooterPosition = function () {
+            const bounds = footer.getBoundingClientRect();
+            setFooterVisibility(bounds.top < window.innerHeight && bounds.bottom > 0);
+        };
+        window.addEventListener("scroll", checkFooterPosition, { passive: true });
+        window.addEventListener("resize", checkFooterPosition);
+        checkFooterPosition();
+    }
+
     function normalizeCatalogKey(value) {
         return (value || "")
             .toString()
@@ -2601,6 +2631,7 @@
         }
         registerServiceWorker();
         setupScrollReveal();
+        setupFloatingHelpVisibility();
         setupHeroCarousel();
         setupSocketErrors();
         setupTrackingPage();

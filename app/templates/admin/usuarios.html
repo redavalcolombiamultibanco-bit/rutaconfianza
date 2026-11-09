@@ -36,12 +36,20 @@
     <form method="post" action="{{ url_for('admin_bp.crear_usuario_admin') }}" class="row g-3">
         <div class="col-md-4"><input class="form-control" name="nombre" placeholder="Nombre completo" required></div>
         <div class="col-md-4"><input class="form-control" name="username" placeholder="Usuario de acceso" required></div>
-        <div class="col-md-4"><input class="form-control" type="password" name="password" placeholder="Contrasena" required></div>
+        <div class="col-md-4">
+            <div class="input-group">
+                <input class="form-control" type="password" id="usuarioPassword" name="password" placeholder="Contrasena" required>
+                <button class="btn btn-outline-secondary" type="button" data-password-toggle="usuarioPassword" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+            </div>
+        </div>
         <div class="col-md-6">
             <input class="form-control" name="pregunta_seguridad" list="preguntasSeguridad" placeholder="Pregunta de seguridad (recuperacion)">
         </div>
         <div class="col-md-6">
-            <input class="form-control" type="password" name="respuesta_seguridad" placeholder="Respuesta de seguridad" autocomplete="off">
+            <div class="input-group">
+                <input class="form-control" type="password" id="usuarioRespuesta" name="respuesta_seguridad" placeholder="Respuesta de seguridad" autocomplete="off">
+                <button class="btn btn-outline-secondary" type="button" data-password-toggle="usuarioRespuesta" aria-label="Mostrar respuesta" title="Mostrar respuesta"><i class="bi bi-eye"></i></button>
+            </div>
         </div>
         <div class="col-12">
             <p class="admin-hint-text mb-0">
@@ -92,12 +100,20 @@
                 <form method="post" action="{{ url_for('admin_bp.actualizar_usuario_admin', admin_user_id=usuario.id) }}" class="row g-3 mt-2">
                     <div class="col-md-4"><input class="form-control" name="nombre" value="{{ usuario.nombre }}" placeholder="Nombre completo" required></div>
                     <div class="col-md-4"><input class="form-control" name="username" value="{{ usuario.username }}" placeholder="Usuario de acceso" required></div>
-                    <div class="col-md-4"><input class="form-control" type="password" name="password" placeholder="Nueva contrasena (opcional)"></div>
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <input class="form-control" type="password" id="usuarioPassword{{ usuario.id }}" name="password" placeholder="Nueva contrasena (opcional)">
+                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="usuarioPassword{{ usuario.id }}" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+                        </div>
+                    </div>
                     <div class="col-md-6">
                         <input class="form-control" name="pregunta_seguridad" list="preguntasSeguridad" value="{{ usuario.pregunta_seguridad or '' }}" placeholder="Pregunta de seguridad (recuperacion)">
                     </div>
                     <div class="col-md-6">
-                        <input class="form-control" type="password" name="respuesta_seguridad" placeholder="{% if usuario.tiene_recuperacion %}Nueva respuesta (opcional){% else %}Respuesta de seguridad{% endif %}" autocomplete="off">
+                        <div class="input-group">
+                            <input class="form-control" type="password" id="usuarioRespuesta{{ usuario.id }}" name="respuesta_seguridad" placeholder="{% if usuario.tiene_recuperacion %}Nueva respuesta (opcional){% else %}Respuesta de seguridad{% endif %}" autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="usuarioRespuesta{{ usuario.id }}" aria-label="Mostrar respuesta" title="Mostrar respuesta"><i class="bi bi-eye"></i></button>
+                        </div>
                     </div>
                     <div class="col-12">
                         <p class="admin-hint-text mb-0">

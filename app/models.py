@@ -166,6 +166,7 @@ class Ruta(TimestampMixin, db.Model):
     origen_latitud = db.Column(db.Float, nullable=True)
     origen_longitud = db.Column(db.Float, nullable=True)
     destino = db.Column(db.String(150), nullable=True)
+    destino_direccion = db.Column(db.String(180), nullable=True)
     destino_latitud = db.Column(db.Float, nullable=True)
     destino_longitud = db.Column(db.Float, nullable=True)
     horario_salida = db.Column(db.String(30), nullable=True)

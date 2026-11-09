@@ -15,23 +15,35 @@ USER_AGENT = "RutaExacta/1.0 (+https://rutaexacta.local)"
 
 
 def geocode_colombia_address(*parts: str) -> Optional[dict]:
-    """Convierte una direccion libre en coordenadas usando Nominatim."""
+    """Convierte una direccion libre en coordenadas.
+
+    Prioriza las coincidencias con direccion concreta (calle o punto) y solo
+    acepta un resultado aproximado (por ejemplo, el centro del municipio) como
+    ultimo recurso. Asi una direccion nunca termina ubicada en otro municipio.
+    """
     cleaned_parts = _clean_parts(parts)
     if not cleaned_parts:
         return None
 
     arcgis_result = _find_best_result_arcgis(cleaned_parts)
-    if arcgis_result:
+    if arcgis_result and not _is_approximate_result(arcgis_result):
         return _build_geodata(arcgis_result)
 
     best_result = _find_best_result(cleaned_parts)
     grid_fallback = _geocode_grid_address(cleaned_parts)
     if grid_fallback and _should_prefer_grid_fallback(cleaned_parts, best_result):
         return grid_fallback
-    if not best_result:
-        return _geocode_intersection(cleaned_parts)
+    if best_result:
+        return _build_geodata(best_result)
 
-    return _build_geodata(best_result)
+    intersection_result = _geocode_intersection(cleaned_parts)
+    if intersection_result:
+        return intersection_result
+
+    # Ultimo recurso: se acepta el resultado aproximado si pertenece al municipio pedido.
+    if arcgis_result:
+        return _build_geodata(arcgis_result)
+    return None
 
 
 def _clean_parts(parts: Iterable[str]) -> list[str]:
@@ -43,6 +55,31 @@ def _clean_parts(parts: Iterable[str]) -> list[str]:
         if normalized:
             cleaned.append(normalized)
     return cleaned
+
+
+# Partes del contexto que describen el departamento o el pais, no el municipio.
+_REGION_TOKENS = {"colombia", "casanare"}
+
+
+def _requested_city(parts: list[str]) -> str:
+    """Devuelve el municipio pedido (primer contexto que no sea region o pais)."""
+    for part in parts[1:]:
+        normalized = _normalize_text(part)
+        if normalized and normalized not in _REGION_TOKENS:
+            return normalized
+    return ""
+
+
+def _has_street_level(value: str) -> bool:
+    """True si el texto pedido apunta a una direccion concreta (calle o numero)."""
+    return "#" in value or _looks_like_road(value)
+
+
+def _is_approximate_result(result: dict) -> bool:
+    """True si el resultado solo apunta al municipio y no a una direccion exacta."""
+    attributes = result.get("attributes") if isinstance(result.get("attributes"), dict) else {}
+    addr_type = _normalize_text(attributes.get("Addr_type") or "")
+    return addr_type in {"locality", "postal", "admin", "subregion", "region"}
 
 
 def _build_candidate_queries(parts: list[str]) -> list[str]:
@@ -151,7 +188,8 @@ def _find_best_result(parts: list[str]) -> Optional[dict]:
                 best_score = score
         if best_score >= 8:
             break
-    return best_result
+    # Se descartan coincidencias demasiado debiles (por ejemplo, de otro municipio).
+    return best_result if best_score >= 4 else None
 
 
 def _find_best_result_arcgis(parts: list[str]) -> Optional[dict]:
@@ -381,20 +419,30 @@ def _score_result(result: dict, parts: list[str]) -> float:
         if normalized and normalized in haystack:
             score += 4 if index == 0 else 2
 
-    city_terms = [_normalize_text(part) for part in parts[1:]]
+    # El municipio pedido manda: un resultado de otro municipio debe quedar descartado.
+    requested_city = _requested_city(parts)
     city_fields = [
         _normalize_text(address.get("city") or ""),
         _normalize_text(address.get("town") or ""),
         _normalize_text(address.get("municipality") or ""),
+        _normalize_text(address.get("village") or ""),
         _normalize_text(address.get("county") or ""),
-        _normalize_text(address.get("state") or ""),
     ]
-    for term in city_terms:
-        if term and term in city_fields:
-            score += 3
+    if requested_city:
+        if requested_city in city_fields:
+            score += 20
+        elif any(requested_city in field or field in requested_city for field in city_fields if field):
+            score += 6
+        else:
+            score -= 50
 
     if road and road == address_road:
         score += 8
+
+    # Un resultado sin via (solo ciudad) es un aproximado y no debe superar a una
+    # direccion real cuando el usuario pidio calle y numero.
+    if _has_street_level(road) and not address_road:
+        score -= 12
 
     numeric_tokens = re.findall(r"\d+[a-z]?(?:-\d+[a-z]?)?", road)
     if numeric_tokens:
@@ -441,26 +489,31 @@ def _score_arcgis_result(result: dict, parts: list[str]) -> float:
         if normalized and normalized in address_text:
             score += 2
 
-    locality_fields = [
+    # El municipio pedido manda: un resultado de otro municipio debe quedar descartado.
+    requested_city = _requested_city(parts)
+    city_fields = [
         _normalize_text(attributes.get("City") or ""),
         _normalize_text(attributes.get("Subregion") or ""),
-        _normalize_text(attributes.get("Region") or ""),
+        _normalize_text(attributes.get("District") or ""),
     ]
-    specified_localities = [_normalize_text(part) for part in parts[1:] if _normalize_text(part) not in {"colombia"}]
-    matched_locality = False
-    for locality in specified_localities:
-        if locality and locality in locality_fields:
+    if requested_city:
+        if requested_city in city_fields:
+            score += 25
+        elif any(requested_city in field or field in requested_city for field in city_fields if field):
             score += 8
-            matched_locality = True
-    if specified_localities and not matched_locality:
-        score -= 16
-
-    if "casanare" in specified_localities and "casanare" not in locality_fields:
-        score -= 24
+        else:
+            score -= 60
 
     if addr_type == "pointaddress":
         score += 10
     elif addr_type == "streetaddress":
         score += 6
+    elif addr_type == "streetname":
+        score += 4
+
+    # Si se pidio una direccion concreta, un resultado a nivel de municipio es solo
+    # un aproximado y no debe competir contra una direccion real.
+    if addr_type in {"locality", "postal", "admin", "subregion", "region"} and _has_street_level(parts[0] if parts else ""):
+        score -= 25
 
     return score

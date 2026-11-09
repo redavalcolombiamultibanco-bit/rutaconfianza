@@ -7,7 +7,7 @@
   "start_url": "/conductor/",
   "scope": "/conductor/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#f2f5f4",
   "theme_color": "#0f172a",
   "categories": ["navigation", "productivity", "travel"],

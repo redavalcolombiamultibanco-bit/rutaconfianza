@@ -20,7 +20,12 @@
         <div class="col-md-3"><input class="form-control" name="documento" placeholder="Documento" required></div>
         <div class="col-md-3"><input class="form-control" name="telefono" placeholder="Telefono" required></div>
         <div class="col-md-6"><input class="form-control" type="email" name="email" placeholder="Correo electronico" required></div>
-        <div class="col-md-6"><input class="form-control" type="password" name="password" placeholder="Contrasena inicial (minimo 8 caracteres)" minlength="8" autocomplete="new-password" required></div>
+        <div class="col-md-6">
+            <div class="input-group">
+                <input class="form-control" type="password" id="conductorPassword" name="password" placeholder="Contrasena inicial (minimo 8 caracteres)" minlength="8" autocomplete="new-password" required>
+                <button class="btn btn-outline-secondary" type="button" data-password-toggle="conductorPassword" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+            </div>
+        </div>
         <div class="col-md-6"><input class="form-control" name="nombre_vehiculo" placeholder="Vehiculo" required></div>
         <div class="col-md-3"><input class="form-control" name="placa_vehiculo" placeholder="Placa" required></div>
         <div class="col-md-3"><input class="form-control" type="number" min="1" name="capacidad_vehiculo" placeholder="Capacidad"></div>
@@ -93,7 +98,10 @@
                 </div>
                 <div class="col-md-4">
                     <form method="post" action="{{ url_for('admin_bp.actualizar_credenciales_conductor', conductor_id=conductor.id) }}" class="d-flex gap-2">
-                        <input class="form-control form-control-sm" type="password" name="password" placeholder="Nueva contrasena" minlength="8" autocomplete="new-password" required>
+                        <div class="input-group input-group-sm">
+                            <input class="form-control" type="password" id="accesoPassword{{ conductor.id }}" name="password" placeholder="Nueva contrasena" minlength="8" autocomplete="new-password" required>
+                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="accesoPassword{{ conductor.id }}" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+                        </div>
                         <button class="btn btn-sm btn-outline-primary rounded-pill px-3">Acceso</button>
                     </form>
                 </div>
@@ -111,6 +119,12 @@
                     <div class="col-md-3"><input class="form-control" name="apellidos" value="{{ conductor.apellidos }}" placeholder="Apellidos" required></div>
                     <div class="col-md-3"><input class="form-control" name="telefono" value="{{ conductor.telefono }}" placeholder="Telefono" required></div>
                     <div class="col-md-3"><input class="form-control" type="email" name="email" value="{{ conductor.email }}" placeholder="Correo" required></div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input class="form-control" type="password" id="editarPassword{{ conductor.id }}" name="password" placeholder="Nueva contrasena (opcional)" minlength="8" autocomplete="new-password">
+                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="editarPassword{{ conductor.id }}" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+                        </div>
+                    </div>
                     <div class="col-md-4"><input class="form-control" name="nombre_vehiculo" value="{{ conductor.nombre_vehiculo }}" placeholder="Vehiculo" required></div>
                     <div class="col-md-2"><input class="form-control" name="placa_vehiculo" value="{{ conductor.placa_vehiculo }}" placeholder="Placa" required></div>
                     <div class="col-md-2"><input class="form-control" type="number" min="1" name="capacidad_vehiculo" value="{{ conductor.capacidad_vehiculo or '' }}" placeholder="Capacidad"></div>

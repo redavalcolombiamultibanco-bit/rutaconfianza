@@ -112,19 +112,24 @@
     </div>
     <form method="post" action="{{ url_for('admin_bp.crear_ruta') }}" class="row g-3 js-school-form">
         <div class="col-md-6">
-            <select class="form-select" name="conductor_id" required>
+            <select class="form-select" name="conductor_id">
                 <option value="">Selecciona un conductor</option>
                 {% for conductor in conductores %}
                 <option value="{{ conductor.id }}">{{ conductor.nombre_completo }} · {{ conductor.placa_vehiculo }}</option>
                 {% endfor %}
             </select>
+            <div class="form-text small">Si el conductor aun no existe, registralo en el bloque de abajo.</div>
         </div>
         <div class="col-md-6"><input class="form-control" name="nombre" placeholder="Nombre de la ruta" required></div>
         <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" placeholder="Ciudad o municipio base" list="municipiosCatalogo"></div>
         <div class="col-md-4"><input class="form-control text-uppercase" name="codigo" placeholder="Codigo opcional"></div>
         <div class="col-md-4"><input class="form-control text-uppercase" name="pin_acceso" placeholder="PIN opcional"></div>
         <div class="col-md-6"><input class="form-control" name="origen" placeholder="Origen o punto de salida"></div>
-        <div class="col-md-6"><input class="form-control js-school-input" name="destino" placeholder="Destino o colegio principal" list="colegiosCatalogo"></div>
+        <div class="col-md-6"><input class="form-control js-school-input" name="destino" placeholder="Colegio o destino principal" list="colegiosCatalogo"></div>
+        <div class="col-12">
+            <input class="form-control" name="destino_direccion" placeholder="Direccion exacta del colegio (carrera, calle y numero) para ubicarlo con precision">
+            <div class="form-text small">Si escribes la direccion, el mapa ubica el colegio exactamente; el nombre del colegio queda como referencia.</div>
+        </div>
         <div class="col-md-3"><input class="form-control" name="horario_salida" placeholder="Horario salida"></div>
         <div class="col-md-3"><input class="form-control" name="horario_regreso" placeholder="Horario regreso"></div>
         <div class="col-md-6"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripcion operativa"></textarea></div>
@@ -133,6 +138,29 @@
                 <input class="form-check-input" type="checkbox" value="true" name="activa" id="rutaActiva" checked>
                 <label class="form-check-label" for="rutaActiva">Ruta activa</label>
             </div>
+        </div>
+        <div class="col-12">
+            <details class="border rounded-3 p-3">
+                <summary class="small fw-semibold text-primary" style="cursor: pointer;">Registrar un conductor nuevo (opcional)</summary>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-3"><input class="form-control" name="nuevo_nombres" placeholder="Nombres"></div>
+                    <div class="col-md-3"><input class="form-control" name="nuevo_apellidos" placeholder="Apellidos"></div>
+                    <div class="col-md-3"><input class="form-control" name="nuevo_documento" placeholder="Documento"></div>
+                    <div class="col-md-3"><input class="form-control" name="nuevo_telefono" placeholder="Telefono"></div>
+                    <div class="col-md-6"><input class="form-control" type="email" name="nuevo_email" placeholder="Correo electronico (para ingresar)"></div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input class="form-control" type="password" id="nuevoConductorPassword" name="nuevo_password" placeholder="Contrasena (minimo 8 caracteres)" minlength="8" autocomplete="new-password">
+                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="nuevoConductorPassword" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-md-6"><input class="form-control" name="nuevo_nombre_vehiculo" placeholder="Vehiculo (marca y linea)"></div>
+                    <div class="col-md-3"><input class="form-control" name="nuevo_placa_vehiculo" placeholder="Placa"></div>
+                    <div class="col-md-3"><input class="form-control" type="number" min="1" name="nuevo_capacidad_vehiculo" placeholder="Capacidad"></div>
+                    <div class="col-md-6"><input class="form-control" name="nuevo_ciudad" placeholder="Ciudad" list="municipiosCatalogo"></div>
+                </div>
+                <p class="form-text small mb-0 mt-2">El conductor se guarda con la suscripcion pendiente. Luego puedes activarla y editar su correo o contrasena en la seccion Conductores.</p>
+            </details>
         </div>
         <div class="col-12 text-md-end">
             <button class="btn btn-primary rounded-pill px-4" type="submit">Guardar ruta</button>
@@ -193,7 +221,8 @@
                     <div class="col-md-4"><input class="form-control text-uppercase" name="pin_acceso" value="{{ ruta.pin_acceso }}" placeholder="PIN"></div>
                     <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" value="{{ ruta.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
                     <div class="col-md-6"><input class="form-control" name="origen" value="{{ ruta.origen or '' }}" placeholder="Origen"></div>
-                    <div class="col-md-6"><input class="form-control js-school-input" name="destino" value="{{ ruta.destino or '' }}" placeholder="Destino" list="colegiosCatalogo"></div>
+                    <div class="col-md-6"><input class="form-control js-school-input" name="destino" value="{{ ruta.destino or '' }}" placeholder="Colegio o destino" list="colegiosCatalogo"></div>
+                    <div class="col-12"><input class="form-control" name="destino_direccion" value="{{ ruta.destino_direccion or '' }}" placeholder="Direccion exacta del colegio (para ubicarlo con precision)"></div>
                     <div class="col-md-6"><input class="form-control" name="horario_salida" value="{{ ruta.horario_salida or '' }}" placeholder="Horario salida"></div>
                     <div class="col-md-6"><input class="form-control" name="horario_regreso" value="{{ ruta.horario_regreso or '' }}" placeholder="Horario regreso"></div>
                     <div class="col-12"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripcion">{{ ruta.descripcion or '' }}</textarea></div>

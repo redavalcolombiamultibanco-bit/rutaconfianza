@@ -187,6 +187,7 @@ def actualizar_ruta(ruta_id):
     ruta.descripcion = request.form.get("descripcion", "").strip() or None
     ruta.origen = request.form.get("origen", "").strip() or None
     ruta.destino = _resolve_school_form_value("destino")
+    ruta.destino_direccion = request.form.get("destino_direccion", "").strip() or None
     ruta.horario_salida = request.form.get("horario_salida", "").strip() or None
     ruta.horario_regreso = request.form.get("horario_regreso", "").strip() or None
     _hydrate_route_geodata(ruta)
@@ -512,15 +513,20 @@ def _hydrate_route_geodata(ruta):
         ruta.origen_latitud = None
         ruta.origen_longitud = None
 
-    if ruta.destino:
-        destino = geocode_colombia_address(ruta.destino, ruta.ciudad, "Casanare", "Colombia")
+    destino_texto = ruta.destino_direccion or ruta.destino
+    if destino_texto:
+        destino = geocode_colombia_address(destino_texto, ruta.ciudad, "Casanare", "Colombia")
         if destino:
             ruta.destino_latitud = destino["latitud"]
             ruta.destino_longitud = destino["longitud"]
         else:
             ruta.destino_latitud = None
             ruta.destino_longitud = None
-            flash("No se pudo ubicar automaticamente el destino de la ruta.", "warning")
+            flash(
+                "No se pudo ubicar automaticamente el destino de la ruta. "
+                "Revisa la direccion exacta del colegio.",
+                "warning",
+            )
     else:
         ruta.destino_latitud = None
         ruta.destino_longitud = None

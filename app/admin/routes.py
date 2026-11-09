@@ -469,6 +469,10 @@ def crear_conductor():
 @admin_bp.route("/conductores/<int:conductor_id>/actualizar", methods=["POST"])
 def actualizar_conductor(conductor_id):
     conductor = Conductor.query.get_or_404(conductor_id)
+    nueva_password = request.form.get("password", "")
+    if nueva_password and len(nueva_password) < 8:
+        flash("La nueva contrasena del conductor debe tener al menos 8 caracteres.", "warning")
+        return redirect(url_for("admin_bp.conductores"))
     conductor.nombres = request.form.get("nombres", "").strip()
     conductor.apellidos = request.form.get("apellidos", "").strip()
     conductor.telefono = request.form.get("telefono", "").strip()
@@ -482,6 +486,8 @@ def actualizar_conductor(conductor_id):
     conductor.foto_url = request.form.get("foto_url", "").strip() or None
     conductor.visible_en_directorio = _form_bool("visible_en_directorio")
     conductor.activo = _form_bool("activo", default=True)
+    if nueva_password:
+        conductor.password_hash = generate_password_hash(nueva_password)
     return _commit_with_feedback(
         success_message=f"Conductor {conductor.nombre_completo} actualizado correctamente.",
         error_message="No fue posible actualizar el conductor. Verifica correo y placa.",
@@ -547,12 +553,19 @@ def actualizar_suscripcion(conductor_id):
 @admin_bp.route("/rutas/crear", methods=["POST"])
 def crear_ruta():
     conductor_id = request.form.get("conductor_id", type=int)
-    if conductor_id is None:
-        flash("Debes seleccionar un conductor para la ruta.", "warning")
-        return redirect(url_for("admin_bp.rutas"))
-    conductor = Conductor.query.get_or_404(conductor_id)
+    if conductor_id:
+        conductor = Conductor.query.get_or_404(conductor_id)
+    else:
+        # Sin conductor existente: se puede registrar uno nuevo en el mismo formulario.
+        conductor, error_conductor = _conductor_desde_formulario()
+        if error_conductor:
+            flash(error_conductor, "warning")
+            return redirect(url_for("admin_bp.rutas"))
+        if conductor is None:
+            flash("Selecciona un conductor existente o registra uno nuevo para la ruta.", "warning")
+            return redirect(url_for("admin_bp.rutas"))
     ruta = Ruta(
-        conductor_id=conductor_id,
+        conductor_id=conductor.id,
         conductor=conductor,
         nombre=request.form.get("nombre", "").strip(),
         codigo=(request.form.get("codigo", "").strip().upper() or _generate_unique_code()),
@@ -560,16 +573,17 @@ def crear_ruta():
         descripcion=request.form.get("descripcion", "").strip() or None,
         origen=request.form.get("origen", "").strip() or None,
         destino=request.form.get("destino", "").strip() or None,
+        destino_direccion=request.form.get("destino_direccion", "").strip() or None,
         horario_salida=request.form.get("horario_salida", "").strip() or None,
         horario_regreso=request.form.get("horario_regreso", "").strip() or None,
         pin_acceso=(request.form.get("pin_acceso", "").strip().upper() or _generate_unique_pin()),
         activa=_form_bool("activa", default=True),
     )
-    _hydrate_route_geodata(ruta)
+    _hydrate_route_geodata(ruta, conductor)
     db.session.add(ruta)
     return _commit_with_feedback(
         success_message="Ruta creada correctamente.",
-        error_message="No fue posible crear la ruta. Revisa que el codigo y PIN no esten repetidos.",
+        error_message="No fue posible crear la ruta. Revisa que el codigo, el PIN, el correo y la placa no esten repetidos.",
         redirect_to=url_for("admin_bp.rutas"),
         notify_route_ids=[ruta],
     )
@@ -593,6 +607,7 @@ def actualizar_ruta(ruta_id):
     ruta.descripcion = request.form.get("descripcion", "").strip() or None
     ruta.origen = request.form.get("origen", "").strip() or None
     ruta.destino = request.form.get("destino", "").strip() or None
+    ruta.destino_direccion = request.form.get("destino_direccion", "").strip() or None
     ruta.horario_salida = request.form.get("horario_salida", "").strip() or None
     ruta.horario_regreso = request.form.get("horario_regreso", "").strip() or None
     ruta.activa = _form_bool("activa")
@@ -1015,18 +1030,65 @@ def _hydrate_route_geodata(ruta, conductor=None):
         ruta.origen_latitud = None
         ruta.origen_longitud = None
 
-    if ruta.destino:
-        destino = geocode_colombia_address(ruta.destino, ruta.ciudad, "Casanare", "Colombia")
+    destino_texto = ruta.destino_direccion or ruta.destino
+    if destino_texto:
+        destino = geocode_colombia_address(destino_texto, ruta.ciudad, "Casanare", "Colombia")
         if destino:
             ruta.destino_latitud = destino["latitud"]
             ruta.destino_longitud = destino["longitud"]
         else:
             ruta.destino_latitud = None
             ruta.destino_longitud = None
-            flash("No se pudo ubicar automaticamente el destino de la ruta. Puedes corregirlo luego.", "warning")
+            flash(
+                "No se pudo ubicar automaticamente el destino de la ruta. "
+                "Revisa la direccion exacta del colegio.",
+                "warning",
+            )
     else:
         ruta.destino_latitud = None
         ruta.destino_longitud = None
+
+
+def _conductor_desde_formulario():
+    """Crea un conductor con los campos 'nuevo_*' del formulario de rutas.
+
+    Devuelve (conductor, mensaje_error). Si el bloque opcional viene vacio
+    devuelve (None, None) para que el flujo continue sin conductor.
+    """
+    datos = {
+        "nombres": request.form.get("nuevo_nombres", "").strip(),
+        "apellidos": request.form.get("nuevo_apellidos", "").strip(),
+        "documento": request.form.get("nuevo_documento", "").strip(),
+        "telefono": request.form.get("nuevo_telefono", "").strip(),
+        "email": request.form.get("nuevo_email", "").strip().lower(),
+        "nombre_vehiculo": request.form.get("nuevo_nombre_vehiculo", "").strip(),
+        "placa_vehiculo": request.form.get("nuevo_placa_vehiculo", "").strip().upper(),
+    }
+    password = request.form.get("nuevo_password", "")
+
+    if not any(datos.values()) and not password:
+        return None, None
+
+    faltantes = [campo for campo, valor in datos.items() if not valor]
+    if faltantes or not password:
+        return None, (
+            "Para registrar el conductor nuevo completa nombres, apellidos, documento, "
+            "telefono, correo, vehiculo, placa y contrasena."
+        )
+    if len(password) < 8:
+        return None, "La contrasena del conductor nuevo debe tener al menos 8 caracteres."
+
+    conductor = Conductor(
+        **datos,
+        password_hash=generate_password_hash(password),
+        capacidad_vehiculo=request.form.get("nuevo_capacidad_vehiculo", type=int),
+        ciudad=request.form.get("nuevo_ciudad", "").strip() or None,
+        estado_suscripcion=EstadoSuscripcion.PENDIENTE,
+        gps_habilitado=False,
+        activo=True,
+    )
+    db.session.add(conductor)
+    return conductor, None
 
 
 def _hydrate_student_geodata(estudiante, ruta=None):

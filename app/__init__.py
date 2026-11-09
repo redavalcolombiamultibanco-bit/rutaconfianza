@@ -335,6 +335,7 @@ def _ensure_runtime_schema():
             "ciudad": "ALTER TABLE rutas ADD COLUMN ciudad VARCHAR(80)",
             "origen_latitud": "ALTER TABLE rutas ADD COLUMN origen_latitud FLOAT",
             "origen_longitud": "ALTER TABLE rutas ADD COLUMN origen_longitud FLOAT",
+            "destino_direccion": "ALTER TABLE rutas ADD COLUMN destino_direccion VARCHAR(180)",
             "destino_latitud": "ALTER TABLE rutas ADD COLUMN destino_latitud FLOAT",
             "destino_longitud": "ALTER TABLE rutas ADD COLUMN destino_longitud FLOAT",
         },

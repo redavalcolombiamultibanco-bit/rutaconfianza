@@ -254,6 +254,29 @@
         .driver-hud-next-meta { font-size: .7rem; margin-left: 0; max-width: 100%; white-space: normal; }
         .driver-map-card.is-expanded .driver-hud-stops { display: none; }
     }
+    /* Horizontal en telefono o tablet: el mapa gana ancho y no queda mas alto que la pantalla. */
+    @media (orientation: landscape) and (max-width: 1199.98px) {
+        .driver-app { padding-bottom: 1.5rem; }
+        .driver-main { margin-top: -1.7rem; }
+        .driver-main--with-flash { margin-top: -0.6rem; }
+
+        .driver-main .row.align-items-stretch > .col-xl-4 {
+            flex: 0 0 34%;
+            max-width: 34%;
+            width: 34%;
+        }
+
+        .driver-main .row.align-items-stretch > .col-xl-8 {
+            flex: 0 0 66%;
+            max-width: 66%;
+            width: 66%;
+        }
+
+        .driver-map-card, .driver-map { min-height: 300px; }
+        .driver-bus-image { height: 150px; }
+        .driver-lower-row { margin-top: 1rem; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
         .driver-card, .driver-live-state.is-live .driver-live-dot, .driver-control-status.is-live .driver-live-dot, .driver-marker-pulse { animation: none !important; }
         .driver-primary-action:hover, .driver-parent-link:hover, .driver-navigation-item:hover, .driver-metric:hover { transform: none; }
@@ -534,6 +557,10 @@
                                 <input class="form-control js-school-custom" name="destino_custom" value="" placeholder="O escribe otro destino manual">
                                 <div class="driver-field-help">Si el colegio no sale en la lista, escríbelo aquí.</div>
                             </div>
+                            <div class="col-12">
+                                <input class="form-control" name="destino_direccion" value="{{ ruta.destino_direccion or '' }}" placeholder="Direccion exacta del colegio (para ubicarlo con precision)">
+                                <div class="driver-field-help">Escribe la dirección del colegio para que el mapa lo ubique exactamente.</div>
+                            </div>
                             <div class="col-md-6"><input class="form-control" name="horario_salida" value="{{ ruta.horario_salida or '' }}" placeholder="Horario salida"></div>
                             <div class="col-md-6"><input class="form-control" name="horario_regreso" value="{{ ruta.horario_regreso or '' }}" placeholder="Horario regreso"></div>
                             <div class="col-12"><textarea class="form-control" name="descripcion" rows="4" placeholder="Descripcion operativa">{{ ruta.descripcion or '' }}</textarea></div>
@@ -725,11 +752,26 @@
                                     <div class="col-md-3"><input class="form-control" type="number" min="1" name="capacidad_vehiculo" value="{{ conductor.capacidad_vehiculo or '' }}" placeholder="Capacidad"></div>
                                     <div class="col-md-4"><input class="form-control" name="color_vehiculo" value="{{ conductor.color_vehiculo or '' }}" placeholder="Color del vehiculo"></div>
                                     <div class="col-md-8"><textarea class="form-control" name="descripcion_publica" rows="3" placeholder="Descripcion para el directorio">{{ conductor.descripcion_publica or '' }}</textarea></div>
-                                    <div class="col-md-6"><input class="form-control" type="password" name="password_actual" placeholder="Contraseña actual" autocomplete="current-password"></div>
-                                    <div class="col-md-6"><input class="form-control" type="password" name="password_nueva" placeholder="Nueva contraseña (opcional)" minlength="8" autocomplete="new-password"></div>
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <input class="form-control" type="password" id="driverPasswordActual" name="password_actual" placeholder="Contraseña actual" autocomplete="current-password">
+                                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="driverPasswordActual" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <input class="form-control" type="password" id="driverPasswordNueva" name="password_nueva" placeholder="Nueva contraseña (opcional)" minlength="8" autocomplete="new-password">
+                                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="driverPasswordNueva" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+                                        </div>
+                                    </div>
                                     <div class="col-12"><p class="driver-navigation-note mb-0">Deja los dos campos de contraseña vacios si no quieres cambiarla.</p></div>
                                     <div class="col-md-6"><input class="form-control" name="pregunta_seguridad" list="preguntasSeguridad" value="{{ conductor.pregunta_seguridad or '' }}" placeholder="Pregunta de seguridad"></div>
-                                    <div class="col-md-6"><input class="form-control" type="password" name="respuesta_seguridad" placeholder="{% if conductor.tiene_recuperacion %}Nueva respuesta (opcional){% else %}Respuesta de seguridad{% endif %}" autocomplete="off"></div>
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <input class="form-control" type="password" id="driverRespuestaSeguridad" name="respuesta_seguridad" placeholder="{% if conductor.tiene_recuperacion %}Nueva respuesta (opcional){% else %}Respuesta de seguridad{% endif %}" autocomplete="off">
+                                            <button class="btn btn-outline-secondary" type="button" data-password-toggle="driverRespuestaSeguridad" aria-label="Mostrar respuesta" title="Mostrar respuesta"><i class="bi bi-eye"></i></button>
+                                        </div>
+                                    </div>
                                     <div class="col-12"><p class="driver-navigation-note mb-0">La pregunta y su respuesta te permiten restablecer tu contraseña desde el ingreso, sin depender del administrador.</p></div>
                                     <div class="col-12"><button class="driver-primary-action" type="submit"><i class="bi bi-save me-1"></i> Guardar perfil</button></div>
                                 </div>
