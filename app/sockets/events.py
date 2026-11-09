@@ -6,6 +6,20 @@ from flask_socketio import emit, join_room, leave_room
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.models import Asistencia, EstadoAsistencia, Estudiante, MensajeChat, Ruta, TipoRemitenteChat, UbicacionRuta
+from app.services.rate_limit import (
+    BLOQUEO_PIN_SEGUNDOS,
+    MAX_FALLOS_PIN,
+    bloqueo_restante,
+    cliente_ip,
+    demasiadas_peticiones,
+    espera_legible,
+    olvidar,
+    registrar_fallo,
+)
+
+# Tope de mensajes por minuto para que nadie inunde el chat de una ruta.
+MAX_MENSAJES_CHAT = 20
+VENTANA_CHAT_SEGUNDOS = 60
 
 
 def register_socket_events(socketio):
@@ -29,9 +43,17 @@ def register_socket_events(socketio):
     def handle_room_join(data):
         # Cada cliente se une a la sala de su ruta para recibir solo su propio
         # GPS, asistencias y mensajes en tiempo real.
+        clave = f"pin-sala:{cliente_ip()}"
+        espera = bloqueo_restante(clave)
+        if espera:
+            return _emit_error(
+                f"Demasiados intentos fallidos. Vuelve a intentarlo en {espera_legible(espera)}."
+            )
         ruta = _resolve_route(data)
         if not ruta:
+            registrar_fallo(clave, MAX_FALLOS_PIN, BLOQUEO_PIN_SEGUNDOS)
             return _emit_error("No fue posible identificar la ruta para unirse a la sala.")
+        olvidar(clave)
         join_room(ruta.socket_room)
         emit(
             "room:joined",
@@ -193,6 +215,8 @@ def register_socket_events(socketio):
 
     @socketio.on("chat:message")
     def handle_chat_message(data):
+        if demasiadas_peticiones(f"chat:{cliente_ip()}", MAX_MENSAJES_CHAT, VENTANA_CHAT_SEGUNDOS):
+            return _emit_error("Has enviado demasiados mensajes seguidos. Espera un momento.")
         ruta = _resolve_route(data)
         if not ruta:
             return _emit_error("No se encontro la ruta para enviar el mensaje.")

@@ -995,9 +995,13 @@
         body.append("lng", lng);
 
         setDriverNotice("Guardando la ubicacion de la casita...");
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
         fetch(`/conductor/estudiantes/${estudianteId}/ubicacion`, {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-CSRFToken": metaToken ? metaToken.getAttribute("content") : "",
+            },
             body: body.toString(),
         })
             .then(function (response) {

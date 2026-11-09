@@ -27,6 +27,7 @@
                     <h1 class="portal-auth__heading">Portal de Padres</h1>
                     <p class="portal-auth__subtitle">Ingresa el PIN asignado por la empresa o por el conductor de la ruta.</p>
                     <form method="post" class="d-grid gap-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input class="form-control form-control-lg text-center portal-auth__pin" name="pin" placeholder="PIN" maxlength="10" autocomplete="off" required>
                         <button class="btn btn-primary btn-lg" type="submit">Ingresar al seguimiento</button>
                     </form>

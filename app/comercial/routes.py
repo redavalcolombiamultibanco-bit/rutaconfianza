@@ -4,6 +4,12 @@ from datetime import datetime
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from app import db
 from app.models import Conductor, EstadoSuscripcion, MensajeContacto, SolicitudConductor
+from app.services.rate_limit import (
+    MAX_ENVIOS_FORMULARIO,
+    VENTANA_FORMULARIO_SEGUNDOS,
+    cliente_ip,
+    demasiadas_peticiones,
+)
 
 comercial_bp = Blueprint("comercial_bp", __name__)
 
@@ -52,6 +58,11 @@ def terminos():
 
 @comercial_bp.route("/registro-conductor", methods=["POST"])
 def registro_conductor():
+    if demasiadas_peticiones(
+        f"registro-conductor:{cliente_ip()}", MAX_ENVIOS_FORMULARIO, VENTANA_FORMULARIO_SEGUNDOS
+    ):
+        flash("Recibimos varios envios seguidos. Espera unos minutos e intenta de nuevo.", "warning")
+        return redirect(url_for("comercial_bp.home") + "#contacto")
     if not request.form.get("acepta_terminos"):
         flash("Debes aceptar los términos y condiciones y la política de tratamiento de datos.", "warning")
         return redirect(url_for("comercial_bp.home") + "#contacto")
@@ -76,6 +87,11 @@ def registro_conductor():
 @comercial_bp.route("/contacto", methods=["POST"])
 def contacto():
     """Recibe las consultas del formulario de contacto de la landing."""
+    if demasiadas_peticiones(
+        f"contacto:{cliente_ip()}", MAX_ENVIOS_FORMULARIO, VENTANA_FORMULARIO_SEGUNDOS
+    ):
+        flash("Recibimos varios mensajes seguidos. Espera unos minutos e intenta de nuevo.", "warning")
+        return redirect(url_for("comercial_bp.home") + "#contacto")
     nombre = request.form.get("nombre", "").strip()
     email = request.form.get("email", "").strip().lower()
     telefono = request.form.get("telefono", "").strip()

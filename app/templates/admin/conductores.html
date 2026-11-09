@@ -15,6 +15,7 @@
         </div>
     </div>
     <form method="post" action="{{ url_for('admin_bp.crear_conductor') }}" class="row g-3 js-school-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="col-md-3"><input class="form-control" name="nombres" placeholder="Nombres" required></div>
         <div class="col-md-3"><input class="form-control" name="apellidos" placeholder="Apellidos" required></div>
         <div class="col-md-3"><input class="form-control" name="documento" placeholder="Documento" required></div>
@@ -87,6 +88,7 @@
             <div class="row g-2 mt-3 align-items-end">
                 <div class="col-md-4">
                     <form method="post" action="{{ url_for('admin_bp.actualizar_suscripcion', conductor_id=conductor.id) }}" class="d-flex gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <select class="form-select form-select-sm" name="estado">
                             <option value="activa" {% if conductor.estado_suscripcion.value == 'activa' %}selected{% endif %}>Activa</option>
                             <option value="inactiva" {% if conductor.estado_suscripcion.value == 'inactiva' %}selected{% endif %}>Inactiva</option>
@@ -98,6 +100,7 @@
                 </div>
                 <div class="col-md-4">
                     <form method="post" action="{{ url_for('admin_bp.actualizar_credenciales_conductor', conductor_id=conductor.id) }}" class="d-flex gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="input-group input-group-sm">
                             <input class="form-control" type="password" id="accesoPassword{{ conductor.id }}" name="password" placeholder="Nueva contrasena" minlength="8" autocomplete="new-password" required>
                             <button class="btn btn-outline-secondary" type="button" data-password-toggle="accesoPassword{{ conductor.id }}" aria-label="Mostrar contraseña" title="Mostrar contraseña"><i class="bi bi-eye"></i></button>
@@ -107,6 +110,7 @@
                 </div>
                 <div class="col-md-4 text-md-end">
                     <form method="post" action="{{ url_for('admin_bp.eliminar_conductor', conductor_id=conductor.id) }}" onsubmit="return confirm('Se eliminaran tambien sus rutas y estudiantes. ¿Continuar?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button class="btn btn-sm btn-outline-danger rounded-pill px-3" type="submit">Eliminar</button>
                     </form>
                 </div>
@@ -115,6 +119,7 @@
             <details class="mt-3">
                 <summary class="small fw-semibold text-primary" style="cursor: pointer;">Editar datos del conductor</summary>
                 <form method="post" action="{{ url_for('admin_bp.actualizar_conductor', conductor_id=conductor.id) }}" class="row g-3 mt-2 js-school-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <div class="col-md-3"><input class="form-control" name="nombres" value="{{ conductor.nombres }}" placeholder="Nombres" required></div>
                     <div class="col-md-3"><input class="form-control" name="apellidos" value="{{ conductor.apellidos }}" placeholder="Apellidos" required></div>
                     <div class="col-md-3"><input class="form-control" name="telefono" value="{{ conductor.telefono }}" placeholder="Telefono" required></div>

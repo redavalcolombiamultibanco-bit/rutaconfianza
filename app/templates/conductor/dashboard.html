@@ -297,6 +297,7 @@
             </a>
             <span class="driver-workspace-label">Centro de operación</span>
             <form method="post" action="{{ url_for('conductor_bp.salir') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="btn btn-sm btn-outline-light" type="submit">Salir</button>
             </form>
         </div>
@@ -500,6 +501,7 @@
                                         <h2 class="driver-section-title mt-1 mb-0">Novedades de la ruta</h2>
                                     </div>
                                     <form method="post" action="{{ url_for('conductor_bp.limpiar_chat', ruta_id=ruta.id) }}" onsubmit="return confirm('¿Borrar todos los mensajes del chat de esta ruta? Esta acción no se puede deshacer.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                         <button class="driver-chat-clear" type="submit" title="Borrar todos los mensajes del chat">
                                             <i class="bi bi-trash3"></i><span>Limpiar chat</span>
                                         </button>
@@ -541,6 +543,7 @@
                         <h2 class="driver-section-title mt-1">Editar informacion general</h2>
                         <p class="driver-navigation-note">Si cambias ciudad, origen o destino, el sistema intentara recalcular la ubicacion para la guia.</p>
                         <form method="post" action="{{ url_for('conductor_bp.actualizar_ruta', ruta_id=ruta.id) }}" class="row g-3 js-school-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <div class="col-12"><input class="form-control" name="nombre" value="{{ ruta.nombre }}" placeholder="Nombre de la ruta" required></div>
                             <div class="col-md-6">
                                 <input class="form-control text-uppercase" name="pin_acceso" value="{{ ruta.pin_acceso }}" maxlength="10" placeholder="PIN para familias" required>
@@ -604,6 +607,7 @@
                                 <i class="bi bi-plus-lg driver-stop-chevron"></i>
                             </summary>
                             <form method="post" action="{{ url_for('conductor_bp.crear_estudiante', ruta_id=ruta.id) }}" class="row g-3 js-school-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <div class="col-md-6"><input class="form-control" name="nombres" placeholder="Nombres" required></div>
                                 <div class="col-md-6"><input class="form-control" name="apellidos" placeholder="Apellidos" required></div>
                                 <div class="col-md-4"><input class="form-control" name="documento" placeholder="Documento"></div>
@@ -660,6 +664,7 @@
                                 <i class="bi bi-chevron-down driver-stop-chevron"></i>
                             </summary>
                             <form method="post" action="{{ url_for('conductor_bp.actualizar_estudiante', estudiante_id=estudiante.id) }}" class="row g-3 js-school-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <div class="col-md-6"><input class="form-control" name="nombres" value="{{ estudiante.nombres }}" placeholder="Nombres" required></div>
                                 <div class="col-md-6"><input class="form-control" name="apellidos" value="{{ estudiante.apellidos }}" placeholder="Apellidos" required></div>
                                 <div class="col-md-4"><input class="form-control" name="documento" value="{{ estudiante.documento or '' }}" placeholder="Documento"></div>
@@ -727,6 +732,7 @@
                         </div>
                         <p class="driver-navigation-note">Actualiza tus datos, la foto de tu buseta y tu contraseña. Los cambios se ven en tu panel, en el portal de familias y en el directorio publico.</p>
                         <form method="post" action="{{ url_for('conductor_bp.actualizar_perfil') }}" enctype="multipart/form-data" class="row g-3">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="ruta_id" value="{{ ruta.id if ruta else '' }}">
                             <div class="col-lg-4">
                                 {% if conductor.foto_publica_url %}

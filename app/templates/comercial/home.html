@@ -50,6 +50,7 @@
                     <h2>Ingrese con el PIN de la ruta</h2>
                     <p>Este acceso es solo para familias. No necesita usuario ni contraseña adicional.</p>
                     <form action="{{ url_for('tracking_bp.ingreso') }}" method="post" class="parent-access-card__form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <label class="visually-hidden" for="heroPinRuta">PIN de la ruta</label>
                         <input id="heroPinRuta" type="text" class="form-control" placeholder="PIN DE LA RUTA" name="pin" maxlength="10" required>
                         <button type="submit" class="btn-ingresar">Entrar al portal</button>
@@ -258,6 +259,7 @@
 
             <div class="contact-panel">
                 <form method="post" action="{{ url_for('comercial_bp.contacto') }}" class="row g-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <div class="col-md-6">
                         <label class="form-label" for="contactoNombre">Nombre completo</label>
                         <input class="form-control" id="contactoNombre" name="nombre" placeholder="Tu nombre" required>

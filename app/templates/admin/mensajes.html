@@ -55,6 +55,7 @@
                     <span class="small text-secondary">{{ mensaje.atendido_en.strftime("%Y-%m-%d %H:%M") if mensaje.atendido_en else "" }}</span>
                     {% else %}
                     <form method="post" action="{{ url_for('admin_bp.marcar_mensaje_atendido', mensaje_id=mensaje.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="submit">Marcar atendido</button>
                     </form>
                     {% endif %}

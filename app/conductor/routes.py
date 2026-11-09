@@ -10,6 +10,18 @@ from app import db, socketio
 from app.models import Asistencia, Conductor, Estudiante, MensajeChat, Ruta
 from app.services.geocoding import geocode_colombia_address
 from app.services.school_catalog import get_municipalities, load_school_catalog
+from app.services.rate_limit import (
+    BLOQUEO_ACCESO_SEGUNDOS,
+    MAX_FALLOS_ACCESO,
+    MAX_INTENTOS_RECUPERACION,
+    VENTANA_RECUPERACION_SEGUNDOS,
+    bloqueo_restante,
+    cliente_ip,
+    demasiadas_peticiones,
+    espera_legible,
+    olvidar,
+    registrar_fallo,
+)
 from app.services.security import aplicar_recuperacion, verificar_respuesta
 
 conductor_bp = Blueprint("conductor_bp", __name__, url_prefix="/conductor")
@@ -22,6 +34,15 @@ def ingresar():
         return redirect(url_for("conductor_bp.dashboard"))
 
     if request.method == "POST":
+        clave = f"acceso-conductor:{cliente_ip()}"
+        espera = bloqueo_restante(clave)
+        if espera:
+            flash(
+                f"Demasiados intentos fallidos. Vuelve a intentarlo en {espera_legible(espera)}.",
+                "danger",
+            )
+            return render_template("conductor/ingresar.html"), 429
+
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         conductor = Conductor.query.filter_by(email=email).first()
@@ -31,8 +52,16 @@ def ingresar():
             or not conductor.password_hash
             or not check_password_hash(conductor.password_hash, password)
         ):
-            flash("Correo o contraseña incorrectos, o cuenta inactiva.", "danger")
+            espera = registrar_fallo(clave, MAX_FALLOS_ACCESO, BLOQUEO_ACCESO_SEGUNDOS)
+            if espera:
+                flash(
+                    f"Demasiados intentos fallidos. Vuelve a intentarlo en {espera_legible(espera)}.",
+                    "danger",
+                )
+            else:
+                flash("Correo o contraseña incorrectos, o cuenta inactiva.", "danger")
         else:
+            olvidar(clave)
             session.clear()
             session["conductor_id"] = conductor.id
             return redirect(url_for("conductor_bp.dashboard"))
@@ -54,6 +83,13 @@ def recuperar_password():
 
     identificador = ""
     if request.method == "POST":
+        if demasiadas_peticiones(
+            f"recuperacion-conductor:{cliente_ip()}",
+            MAX_INTENTOS_RECUPERACION,
+            VENTANA_RECUPERACION_SEGUNDOS,
+        ):
+            flash("Demasiados intentos seguidos. Espera unos minutos y vuelve a intentarlo.", "danger")
+            return render_template("conductor/recuperar_password.html", paso="identificar", identificador=""), 429
         accion = request.form.get("accion", "buscar")
         identificador = request.form.get("email", "").strip().lower()
         conductor = Conductor.query.filter_by(email=identificador).first() if identificador else None

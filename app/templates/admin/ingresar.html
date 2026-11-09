@@ -14,6 +14,7 @@
                             <p class="text-secondary mb-0">Ingresa con tu usuario y contraseña para administrar la plataforma.</p>
                         </div>
                         <form method="post" class="d-grid gap-3">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <div>
                                 <label class="form-label" for="adminUsername">Usuario</label>
                                 <input class="form-control" id="adminUsername" name="username" type="text" autocomplete="username" required>

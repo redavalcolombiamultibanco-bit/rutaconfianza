@@ -1,11 +1,13 @@
 """Inicializacion principal de la aplicacion Ruta Confianza."""
 from importlib import import_module
 from pathlib import Path
+import hmac
 import mimetypes
 import os
+import secrets
 import threading
 import time
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, jsonify, request, send_from_directory, session
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
@@ -31,6 +33,7 @@ def create_app(config_object=None):
     _register_pwa_routes(app)
     _register_seo_routes(app)
     _register_security_headers(app)
+    _register_csrf(app)
     db.init_app(app)
     migrate.init_app(app, db)
     socketio.init_app(
@@ -96,6 +99,46 @@ def _register_security_headers(app):
                 "max-age=31536000; includeSubDomains",
             )
         return response
+
+
+# Metodos que modifican datos: solo ellos exigen el token.
+CSRF_METODOS_PROTEGIDOS = {"POST", "PUT", "PATCH", "DELETE"}
+# El transporte de sondeo de Socket.IO tambien usa POST, pero no son formularios.
+CSRF_RUTAS_EXENTAS = ("/socket.io/",)
+
+
+def _register_csrf(app):
+    """Exige un token ligado a la sesion en los envios de formularios.
+
+    El token viaja en el campo oculto `csrf_token` o en la cabecera
+    `X-CSRFToken`, y se compara con el que esta guardado en la sesion del
+    navegador. Un sitio externo no puede leer ese token, asi que no logra
+    reenviar un formulario en nombre del usuario.
+    """
+
+    @app.before_request
+    def _asegurar_csrf_token():
+        if not session.get("csrf_token"):
+            session["csrf_token"] = secrets.token_urlsafe(32)
+
+    @app.before_request
+    def _validar_csrf_token():
+        if request.method not in CSRF_METODOS_PROTEGIDOS:
+            return None
+        if request.path.startswith(CSRF_RUTAS_EXENTAS):
+            return None
+        esperado = session.get("csrf_token") or ""
+        recibido = request.headers.get("X-CSRFToken") or request.form.get("csrf_token") or ""
+        # Se comparan bytes para evitar fallos con caracteres no ASCII enviados
+        # a proposito por un atacante.
+        if esperado and hmac.compare_digest(esperado.encode("utf-8"), str(recibido).encode("utf-8")):
+            return None
+        app.logger.warning("Envio bloqueado por falta de token CSRF: %s %s", request.method, request.path)
+        abort(400, description="La sesion del formulario expiro. Recarga la pagina e intenta de nuevo.")
+
+    @app.context_processor
+    def _inyectar_csrf():
+        return {"csrf_token": session.get("csrf_token", "")}
 
 
 def _register_health_routes(app):

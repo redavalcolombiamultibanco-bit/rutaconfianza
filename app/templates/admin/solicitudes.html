@@ -61,10 +61,12 @@
                     {% if solicitud.estado.value == 'pendiente' %}
                     <div class="d-flex gap-2">
                         <form method="post" action="{{ url_for('admin_bp.gestionar_solicitud', solicitud_id=solicitud.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="accion" value="aprobar">
                             <button class="btn btn-sm btn-primary rounded-pill px-3" type="submit">Aprobar</button>
                         </form>
                         <form method="post" action="{{ url_for('admin_bp.gestionar_solicitud', solicitud_id=solicitud.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="accion" value="rechazar">
                             <button class="btn btn-sm btn-outline-danger rounded-pill px-3" type="submit" onclick="return confirm('¿Deseas rechazar esta solicitud?');">Rechazar</button>
                         </form>

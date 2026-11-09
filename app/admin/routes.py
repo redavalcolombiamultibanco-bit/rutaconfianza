@@ -52,6 +52,18 @@ from app.services.backups import (
 from app.services.geocoding import geocode_colombia_address
 from app.services.reports import REPORTES, construir_reporte, generar_csv, generar_pdf
 from app.services.school_catalog import get_municipalities, load_school_catalog
+from app.services.rate_limit import (
+    BLOQUEO_ACCESO_SEGUNDOS,
+    MAX_FALLOS_ACCESO,
+    MAX_INTENTOS_RECUPERACION,
+    VENTANA_RECUPERACION_SEGUNDOS,
+    bloqueo_restante,
+    cliente_ip,
+    demasiadas_peticiones,
+    espera_legible,
+    olvidar,
+    registrar_fallo,
+)
 from app.services.security import aplicar_recuperacion, verificar_respuesta
 
 admin_bp = Blueprint("admin_bp", __name__, url_prefix="/admin")
@@ -77,6 +89,15 @@ def ingresar():
         return redirect(url_for("admin_bp.dashboard"))
 
     if request.method == "POST":
+        clave = f"acceso-admin:{cliente_ip()}"
+        espera = bloqueo_restante(clave)
+        if espera:
+            flash(
+                f"Demasiados intentos fallidos. Vuelve a intentarlo en {espera_legible(espera)}.",
+                "danger",
+            )
+            return render_template("admin/ingresar.html"), 429
+
         username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
         admin = AdminUser.query.filter_by(username=username).first()
@@ -85,8 +106,16 @@ def ingresar():
             or not admin.activo
             or not check_password_hash(admin.password_hash, password)
         ):
-            flash("Usuario o contrasena incorrectos, o cuenta inactiva.", "danger")
+            espera = registrar_fallo(clave, MAX_FALLOS_ACCESO, BLOQUEO_ACCESO_SEGUNDOS)
+            if espera:
+                flash(
+                    f"Demasiados intentos fallidos. Vuelve a intentarlo en {espera_legible(espera)}.",
+                    "danger",
+                )
+            else:
+                flash("Usuario o contrasena incorrectos, o cuenta inactiva.", "danger")
         else:
+            olvidar(clave)
             admin.ultimo_acceso_en = datetime.utcnow()
             db.session.commit()
             session.clear()
@@ -111,6 +140,13 @@ def recuperar_password():
 
     identificador = ""
     if request.method == "POST":
+        if demasiadas_peticiones(
+            f"recuperacion-admin:{cliente_ip()}",
+            MAX_INTENTOS_RECUPERACION,
+            VENTANA_RECUPERACION_SEGUNDOS,
+        ):
+            flash("Demasiados intentos seguidos. Espera unos minutos y vuelve a intentarlo.", "danger")
+            return render_template("admin/recuperar_password.html", paso="identificar", identificador=""), 429
         accion = request.form.get("accion", "buscar")
         identificador = request.form.get("usuario", "").strip().lower()
         admin = AdminUser.query.filter_by(username=identificador).first() if identificador else None

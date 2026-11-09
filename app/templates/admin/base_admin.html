@@ -54,6 +54,7 @@
                 </div>
             </div>
             <form method="post" action="{{ url_for('admin_bp.salir') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="admin-sidebar__logout" type="submit">
                     <i class="bi bi-box-arrow-right"></i><span>Cerrar sesion</span>
                 </button>

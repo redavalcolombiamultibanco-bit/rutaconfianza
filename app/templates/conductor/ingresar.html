@@ -27,6 +27,7 @@
                     <h1 class="portal-auth__heading">Acceso de conductor</h1>
                     <p class="portal-auth__subtitle">Ingresa con las credenciales que te asignó el administrador.</p>
                     <form method="post" class="d-grid gap-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div>
                             <label class="form-label" for="driverEmail">Correo electrónico</label>
                             <input class="form-control" id="driverEmail" name="email" type="email" autocomplete="username" required>

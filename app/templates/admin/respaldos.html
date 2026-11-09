@@ -39,6 +39,7 @@
         </div>
     </div>
     <form method="post" action="{{ url_for('admin_bp.crear_respaldo_admin') }}" class="row g-3 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="col-md-6">
             <label class="form-label small text-secondary">Motivo o etiqueta (opcional)</label>
             <input class="form-control" name="motivo" placeholder="Ej: cierre de mes, antes de actualizar">
@@ -67,6 +68,7 @@
     {% if respaldos %}
     <form method="post" action="{{ url_for('admin_bp.restaurar_respaldo_admin') }}" class="row g-3 align-items-end mb-4"
           onsubmit="return confirm('¿Confirmas restaurar este respaldo? La informacion actual sera reemplazada.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="col-md-8">
             <label class="form-label small text-secondary">Respaldo existente</label>
             <select class="form-select" name="nombre" required>
@@ -85,6 +87,7 @@
     {% endif %}
     <form method="post" action="{{ url_for('admin_bp.restaurar_respaldo_admin') }}" enctype="multipart/form-data"
           class="row g-3 align-items-end" onsubmit="return confirm('¿Confirmas restaurar el archivo subido? La informacion actual sera reemplazada.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="col-md-8">
             <label class="form-label small text-secondary">O sube un archivo de respaldo (.zip)</label>
             <input class="form-control" type="file" name="archivo" accept=".zip,application/zip">
@@ -128,6 +131,7 @@
                 </a>
                 <form method="post" action="{{ url_for('admin_bp.eliminar_respaldo_admin', nombre=respaldo.nombre) }}"
                       onsubmit="return confirm('¿Eliminar este respaldo? Esta accion no se puede deshacer.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button class="btn btn-sm btn-outline-danger rounded-pill px-3" type="submit">
                         <i class="bi bi-trash me-1"></i>Eliminar
                     </button>
