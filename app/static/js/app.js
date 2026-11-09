@@ -2395,6 +2395,54 @@
         }, 7000);
     }
 
+    function setupScrollReveal() {
+        const homePage = document.querySelector(".hero-georuta");
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!homePage || reduceMotion || !("IntersectionObserver" in window)) {
+            return;
+        }
+
+        const targets = document.querySelectorAll([
+            ".portfolio-grid .portfolio-card",
+            "#beneficios .section-title",
+            "#beneficios .row > [class*='col-']",
+            "#servicios .section-title",
+            "#servicios .service-card",
+            "#plataforma .row > [class*='col-']",
+            "#contacto .section-title",
+            "#contacto .contact-info",
+            "#contacto .contact-panel",
+            ".home-final-cta .container",
+        ].join(","));
+        if (!targets.length) {
+            return;
+        }
+
+        let remainingTargets = targets.length;
+        const observer = new IntersectionObserver(function (entries, activeObserver) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) {
+                    return;
+                }
+                entry.target.classList.add("is-visible");
+                activeObserver.unobserve(entry.target);
+                remainingTargets -= 1;
+                if (remainingTargets === 0) {
+                    activeObserver.disconnect();
+                }
+            });
+        }, {
+            rootMargin: "0px 0px -40px 0px",
+            threshold: 0.08,
+        });
+
+        targets.forEach(function (target, index) {
+            target.classList.add("scroll-reveal");
+            target.style.setProperty("--scroll-reveal-delay", `${(index % 3) * 75}ms`);
+            observer.observe(target);
+        });
+    }
+
     function normalizeCatalogKey(value) {
         return (value || "")
             .toString()
@@ -2552,6 +2600,7 @@
             setVoiceStatus("No disponible");
         }
         registerServiceWorker();
+        setupScrollReveal();
         setupHeroCarousel();
         setupSocketErrors();
         setupTrackingPage();

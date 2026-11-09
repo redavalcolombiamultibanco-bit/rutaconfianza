@@ -32,6 +32,12 @@ class Config:
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", str(BASE_DIR / "app" / "static" / "uploads"))
     ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
     BACKUP_FOLDER = os.getenv("BACKUP_FOLDER", str(BASE_DIR / "respaldos"))
+    # Respaldo automatico: se crea una copia cada BACKUP_INTERVALO_HORAS horas y
+    # se conservan solo las ultimas BACKUP_RETENCION copias automaticas (las
+    # copias manuales nunca se borran solas).
+    BACKUP_AUTOMATICO = os.getenv("BACKUP_AUTOMATICO", "1").strip().lower() not in {"0", "false", "no"}
+    BACKUP_INTERVALO_HORAS = float(os.getenv("BACKUP_INTERVALO_HORAS", "24"))
+    BACKUP_RETENCION = int(os.getenv("BACKUP_RETENCION", "7"))
     SOCKETIO_ASYNC_MODE = os.getenv("SOCKETIO_ASYNC_MODE", "threading")
     SOCKETIO_CORS_ALLOWED_ORIGINS = _cors_origins()
     # Endurecimiento de la cookie de sesion: no accesible por JavaScript y sin

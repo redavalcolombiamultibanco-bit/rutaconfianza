@@ -3,6 +3,8 @@ from importlib import import_module
 from pathlib import Path
 import mimetypes
 import os
+import threading
+import time
 from flask import Flask, Response, jsonify, request, send_from_directory
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
@@ -46,7 +48,33 @@ def create_app(config_object=None):
         db.create_all()
         _ensure_runtime_schema()
         _ensure_default_admin_user(app)
+    _programar_respaldo_automatico(app)
     return app
+
+
+def _programar_respaldo_automatico(app):
+    """Lanza un hilo que crea un respaldo cada cierto numero de horas.
+
+    Trabaja en segundo plano para no depender de que alguien entre al panel.
+    Cualquier fallo queda en el log: el respaldo nunca afecta a la aplicacion.
+    """
+    if app.config.get("DEBUG") and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        # Con el recargador de desarrollo activo solo programa el proceso hijo,
+        # para no crear respaldos por duplicado.
+        return
+
+    from app.services.backups import respaldo_automatico_si_corresponde
+
+    def ciclo():
+        while True:
+            try:
+                with app.app_context():
+                    respaldo_automatico_si_corresponde()
+            except Exception:
+                app.logger.exception("No fue posible crear el respaldo automatico")
+            time.sleep(3600)
+
+    threading.Thread(target=ciclo, name="respaldo-automatico", daemon=True).start()
 
 
 def _register_security_headers(app):

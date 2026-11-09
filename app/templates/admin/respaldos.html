@@ -6,6 +6,11 @@
 <p class="admin-section-intro">
     Crea copias de seguridad completas (base de datos y fotos), descargalas, y restaura la informacion cuando lo necesites.
 </p>
+<p class="admin-section-intro">
+    La aplicacion crea un respaldo automatico cada {{ config.BACKUP_INTERVALO_HORAS|int }} horas y conserva los ultimos
+    {{ config.BACKUP_RETENCION }} para no llenar el disco. Puedes eliminar cualquier respaldo, automatico o manual,
+    con el boton Eliminar del historial.
+</p>
 
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
@@ -57,6 +62,7 @@
     <div class="alert alert-warning small" role="alert">
         <i class="bi bi-exclamation-triangle me-1"></i>
         Al restaurar se reemplazan la base de datos y las fotos actuales. El sistema guarda automaticamente un respaldo previo antes de restaurar.
+        Los respaldos se guardan en el disco temporal del servidor y se borran al reiniciar o actualizar la aplicacion: descarga una copia a tu computador y guardala en un lugar seguro.
     </div>
     {% if respaldos %}
     <form method="post" action="{{ url_for('admin_bp.restaurar_respaldo_admin') }}" class="row g-3 align-items-end mb-4"
