@@ -637,6 +637,12 @@
                     `<strong>${stop.nombre || "Parada"}</strong><br>${stop.direccion || "Direccion pendiente"}`
                 );
                 marker.on("click", function () {
+                    // Fijar la ruta tocando una casita es exclusivo del conductor.
+                    // Las familias solo ven la informacion de la parada (popup),
+                    // sin alterar el trazado del recorrido.
+                    if (!mapContext.isDriverMap) {
+                        return;
+                    }
                     const sameStopSelected = mapContext.selectedStopId === stop.id;
                     mapContext.selectedStopId = sameStopSelected ? null : stop.id;
                     mapContext.plannedRouteFitted = false;
