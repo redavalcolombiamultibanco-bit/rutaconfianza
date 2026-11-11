@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Ruta escolar en Yopal | Transporte escolar con GPS | {{ config.APP_NAME }}{% endblock %}
+{% block meta_description %}Ruta escolar en Yopal, Casanare: transporte escolar con seguimiento GPS en vivo, control de asistencia y avisos para las familias. Solicita la ruta escolar de tu hijo en Yopal.{% endblock %}
+{% block meta_keywords %}ruta escolar Yopal, transporte escolar Yopal, ruta escolar Casanare, buseta escolar Yopal, seguimiento GPS escolar Yopal, ruta escolar para niños Yopal{% endblock %}
+{% block canonical %}{{ site_base_url }}{{ request.path }}{% endblock %}
+{% block structured_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Transporte escolar",
+    "name": {{ ("Ruta escolar en Yopal - " ~ config.APP_NAME)|tojson }},
+    "description": {{ ("Servicio de ruta escolar en Yopal, Casanare, con seguimiento GPS en vivo, control de asistencia y comunicacion directa con las familias.")|tojson }},
+    "provider": {
+        "@type": "LocalBusiness",
+        "name": {{ config.APP_NAME|tojson }},
+        "telephone": {{ ("+57" ~ config.CONTACT_WHATSAPP)|tojson }},
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Yopal",
+            "addressRegion": "Casanare",
+            "addressCountry": "CO"
+        }
+    },
+    "areaServed": {"@type": "City", "name": "Yopal, Casanare"},
+    "availableChannel": {
+        "@type": "ServiceChannel",
+        "serviceUrl": {{ (site_base_url ~ "/rutas-escolares-yopal")|tojson }}
+    }
+}
+</script>
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "¿Cómo funciona la ruta escolar en Yopal?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "El conductor transporta a los estudiantes siguiendo la ruta programada. Los padres ingresan al portal con el PIN de la ruta y ven el vehiculo en el mapa en tiempo real, ademas de recibir avisos de salida, llegada y novedades."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Necesito instalar una aplicacion para ver la ruta de mi hijo en Yopal?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. El portal de padres funciona en el navegador del celular o del computador. Solo se necesita el PIN entregado por la empresa o el conductor."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Qué pasa si el vehiculo se desvía de la ruta?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "El sistema registra el recorrido real y avisa a las familias cuando hay novedades. El conductor tambien puede enviar mensajes a la ruta para informar cualquier cambio."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Cómo solicito una ruta escolar en Yopal?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Escribenos por el formulario de contacto o por WhatsApp con el colegio, el barrio y el horario. El equipo de Ruta Confianza te propone una ruta y te entrega el PIN de acceso."
+            }
+        }
+    ]
+}
+</script>
+{% endblock %}
+{% block content %}
+<section class="py-5 bg-white">
+    <div class="container">
+        <div class="section-title">
+            <span>Transporte escolar</span>
+            <h1>Ruta escolar en Yopal, Casanare</h1>
+        </div>
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-7">
+                <p class="lead">
+                    {{ config.APP_NAME }} es la plataforma de <strong>ruta escolar en Yopal</strong> que permite a las
+                    familias seguir en vivo el recorrido del vehiculo que transporta a sus hijos. Cada buseta o
+                    microbús escolar cuenta con seguimiento GPS, control de subida y bajada de estudiantes y un chat
+                    directo con el conductor de la ruta.
+                </p>
+                <p>
+                    En Yopal, capital del departamento de Casanare, cientos de familias necesitan llevar a sus hijos
+                    al colegio de forma segura todos los dias. Con la ruta escolar digital, en lugar de llamar al
+                    conductor para preguntar donde va, los padres abren el portal, escriben el PIN de la ruta y ven el
+                    vehiculo moverse sobre el mapa en tiempo real.
+                </p>
+                <p>
+                    El servicio cubre recorridos urbanos en Yopal y se conecta con las rutas escolares del resto del
+                    departamento. Si eres conductor o empresa de transporte, puedes organizar tus rutas, tus paradas y
+                    tus estudiantes desde el panel, y dejar que las familias consulten todo sin llamadas.
+                </p>
+                <div class="d-flex flex-wrap gap-3 mt-4">
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('comercial_bp.home') }}#contacto">Solicita tu ruta escolar</a>
+                    <a class="btn btn-outline-dark btn-lg" href="{{ url_for('tracking_bp.ingreso') }}">Entrar al portal de padres</a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="service-card h-100">
+                    <span class="service-card__icon"><i class="bi bi-geo-alt"></i></span>
+                    <h3>Que incluye la ruta escolar en Yopal</h3>
+                    <ul class="mb-0 ps-3">
+                        <li>Seguimiento GPS en vivo del vehiculo.</li>
+                        <li>Control de asistencia de cada estudiante.</li>
+                        <li>Avisos de salida, llegada y novedades.</li>
+                        <li>Chat entre el conductor y los acudientes.</li>
+                        <li>Acceso de las familias con un solo PIN.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="section-title">
+            <span>Como funciona</span>
+            <h2>Tu hijo en la ruta escolar de Yopal, paso a paso</h2>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon"><i class="bi bi-1-circle"></i></div>
+                    <h3>Se programa la ruta</h3>
+                    <p>Se define el colegio, el horario y las paradas de cada estudiante en Yopal y sus alrededores.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon"><i class="bi bi-2-circle"></i></div>
+                    <h3>El conductor inicia el recorrido</h3>
+                    <p>Desde su celular, el conductor activa la ruta y comienza a enviar la ubicacion en tiempo real.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon"><i class="bi bi-3-circle"></i></div>
+                    <h3>La familia sigue en vivo</h3>
+                    <p>Con el PIN de la ruta, los padres ven el vehiculo, las paradas y reciben avisos en el celular.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-white">
+    <div class="container">
+        <div class="section-title">
+            <span>Preguntas frecuentes</span>
+            <h2>Dudas sobre la ruta escolar en Yopal</h2>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="service-card h-100">
+                    <h3>¿Cómo funciona la ruta escolar en Yopal?</h3>
+                    <p>El conductor transporta a los estudiantes siguiendo la ruta programada. Los padres ingresan al portal con el PIN de la ruta y ven el vehiculo en el mapa en tiempo real, ademas de recibir avisos de salida, llegada y novedades.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="service-card h-100">
+                    <h3>¿Necesito instalar una aplicacion?</h3>
+                    <p>No. El portal de padres funciona en el navegador del celular o del computador. Solo se necesita el PIN entregado por la empresa o el conductor.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="service-card h-100">
+                    <h3>¿Qué pasa si el vehiculo se desvía de la ruta?</h3>
+                    <p>El sistema registra el recorrido real y avisa a las familias cuando hay novedades. El conductor tambien puede enviar mensajes a la ruta para informar cualquier cambio.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="service-card h-100">
+                    <h3>¿Cómo solicito una ruta escolar en Yopal?</h3>
+                    <p>Escribenos por el formulario de contacto o por WhatsApp con el colegio, el barrio y el horario. El equipo de {{ config.APP_NAME }} te propone una ruta y te entrega el PIN de acceso.</p>
+                </div>
+            </div>
+        </div>
+        <p class="text-center mt-4 mb-0">
+            Tambien atendemos otros municipios:
+            <a href="{{ url_for('comercial_bp.rutas_escolares_casanare') }}">ruta escolar en Casanare</a>.
+        </p>
+    </div>
+</section>
+
+<section class="home-final-cta py-5 bg-light">
+    <div class="container text-center">
+        <h2 class="home-final-cta__title fw-bold">¿Buscas una ruta escolar en Yopal?</h2>
+        <p class="home-final-cta__text text-secondary">Cuentanos el colegio y el sector donde vives y te ayudamos a organizar la ruta.</p>
+        <div class="home-final-cta__actions d-flex justify-content-center gap-3">
+            <a href="{{ url_for('comercial_bp.home') }}#contacto" class="btn btn-primary btn-lg">Contactenos</a>
+            <a href="{{ url_for('comercial_bp.directorio') }}" class="btn btn-outline-dark btn-lg">Ver conductores</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

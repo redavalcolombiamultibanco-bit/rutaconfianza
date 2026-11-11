@@ -176,6 +176,8 @@ def _register_seo_routes(app):
     public_pages = (
         ("/", "1.0"),
         ("/directorio", "0.8"),
+        ("/rutas-escolares-yopal", "0.9"),
+        ("/rutas-escolares-casanare", "0.9"),
         ("/tracking/", "0.7"),
         ("/conductor/ingresar", "0.7"),
         ("/terminos", "0.4"),

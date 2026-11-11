@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Ruta escolar en Casanare | Transporte escolar con GPS | {{ config.APP_NAME }}{% endblock %}
+{% block meta_description %}Ruta escolar en Casanare: transporte escolar con seguimiento GPS en vivo en Yopal, Aguazul, Villanueva, Tauramena y demas municipios del departamento. Control de asistencia y avisos para las familias.{% endblock %}
+{% block meta_keywords %}ruta escolar Casanare, transporte escolar Casanare, ruta escolar Yopal, ruta escolar Aguazul, ruta escolar Villanueva, ruta escolar Tauramena, buseta escolar Casanare{% endblock %}
+{% block canonical %}{{ site_base_url }}{{ request.path }}{% endblock %}
+{% block structured_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Transporte escolar",
+    "name": {{ ("Ruta escolar en Casanare - " ~ config.APP_NAME)|tojson }},
+    "description": {{ ("Servicio de ruta escolar en el departamento de Casanare con seguimiento GPS en vivo, control de asistencia y comunicacion con las familias.")|tojson }},
+    "provider": {
+        "@type": "LocalBusiness",
+        "name": {{ config.APP_NAME|tojson }},
+        "telephone": {{ ("+57" ~ config.CONTACT_WHATSAPP)|tojson }},
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Yopal",
+            "addressRegion": "Casanare",
+            "addressCountry": "CO"
+        }
+    },
+    "areaServed": {"@type": "AdministrativeArea", "name": "Casanare, Colombia"}
+}
+</script>
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "¿En qué municipios de Casanare funciona la ruta escolar?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "El servicio esta pensado para todo el departamento de Casanare, con presencia principal en Yopal y cobertura en municipios como Aguazul, Villanueva, Tauramena, Monterrey, Maní, Paz de Ariporo, Pore, Nunchía, Orocué y Trinidad, entre otros."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Cómo ven las familias la ruta escolar en Casanare?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Cada familia ingresa al portal de padres con el PIN de la ruta y ve el vehiculo en el mapa en tiempo real, ademas de recibir avisos de salida, llegada y novedades de la ruta."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "¿Qué necesita un conductor de Casanare para trabajar con Ruta Confianza?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Solo un celular con internet. El conductor activa la ruta desde el navegador, marca la asistencia de los estudiantes y se comunica con los acudientes por el chat de la ruta."
+            }
+        }
+    ]
+}
+</script>
+{% endblock %}
+{% block content %}
+<section class="py-5 bg-white">
+    <div class="container">
+        <div class="section-title">
+            <span>Cobertura</span>
+            <h1>Ruta escolar en Casanare</h1>
+        </div>
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-7">
+                <p class="lead">
+                    {{ config.APP_NAME }} lleva la <strong>ruta escolar en Casanare</strong> mas alla de un solo
+                    colegio: conecta conductores, vehiculos y familias en todo el departamento con seguimiento GPS en
+                    vivo, control de asistencia y comunicacion directa por ruta.
+                </p>
+                <p>
+                    Casanare combina ciudades como Yopal con municipios de vocacion agropecuaria donde las distancias
+                    entre el hogar y el colegio son largas. Por eso el servicio esta disenado para rutas urbanas y
+                    rurales: el conductor organiza las paradas, los padres siguen el recorrido en el mapa y todos
+                    reciben avisos de salida, llegada y cualquier novedad del camino.
+                </p>
+                <p>
+                    Si tu familia vive en cualquier municipio del departamento, puedes solicitar la ruta escolar y
+                    recibir el PIN de acceso para ver el vehiculo de tu hijo desde el celular.
+                </p>
+                <div class="d-flex flex-wrap gap-3 mt-4">
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('comercial_bp.home') }}#contacto">Solicita tu ruta escolar</a>
+                    <a class="btn btn-outline-dark btn-lg" href="{{ url_for('comercial_bp.rutas_escolares_yopal') }}">Ver ruta escolar en Yopal</a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="service-card h-100">
+                    <span class="service-card__icon"><i class="bi bi-geo"></i></span>
+                    <h3>Municipios de Casanare</h3>
+                    <p class="mb-2">Cobertura de referencia del servicio de transporte escolar:</p>
+                    <p class="mb-0">
+                        {% for municipio in municipios %}{{ municipio }}{% if not loop.last %}, {% endif %}{% endfor %}.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="section-title">
+            <span>Ventajas</span>
+            <h2>Por que elegir una ruta escolar digital en Casanare</h2>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon"><i class="bi bi-signpost-split"></i></div>
+                    <h3>Rutas urbanas y rurales</h3>
+                    <p>Los recorridos largos entre municipios y veredas se organizan con paradas claras para cada estudiante.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon"><i class="bi bi-shield-check"></i></div>
+                    <h3>Mas seguridad para los ninos</h3>
+                    <p>Seguimiento en vivo y control de asistencia para saber quien sube y quien baja en cada parada.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="benefit-card">
+                    <div class="benefit-icon"><i class="bi bi-chat-dots"></i></div>
+                    <h3>Familias informadas</h3>
+                    <p>Avisos y chat de ruta para que los acudientes sepan que pasa sin necesidad de llamar al conductor.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5 bg-white">
+    <div class="container">
+        <div class="section-title">
+            <span>Preguntas frecuentes</span>
+            <h2>Dudas sobre la ruta escolar en Casanare</h2>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="service-card h-100">
+                    <h3>¿En qué municipios de Casanare funciona?</h3>
+                    <p>El servicio esta pensado para todo el departamento, con presencia principal en Yopal y cobertura en municipios como Aguazul, Villanueva, Tauramena, Monterrey, Maní, Paz de Ariporo, Pore, Nunchía, Orocué y Trinidad, entre otros.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="service-card h-100">
+                    <h3>¿Cómo ven las familias la ruta escolar?</h3>
+                    <p>Cada familia ingresa al portal de padres con el PIN de la ruta y ve el vehiculo en el mapa en tiempo real, ademas de recibir avisos de salida, llegada y novedades de la ruta.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="service-card h-100">
+                    <h3>¿Qué necesita un conductor para trabajar con {{ config.APP_NAME }}?</h3>
+                    <p>Solo un celular con internet. El conductor activa la ruta desde el navegador, marca la asistencia de los estudiantes y se comunica con los acudientes por el chat de la ruta.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="service-card h-100">
+                    <h3>¿Cómo solicito la ruta escolar?</h3>
+                    <p>Escribenos por el formulario de contacto o por WhatsApp indicando el municipio, el colegio y el horario. El equipo de {{ config.APP_NAME }} te propone una ruta.</p>
+                </div>
+            </div>
+        </div>
+        <p class="text-center mt-4 mb-0">
+            Cobertura principal:
+            <a href="{{ url_for('comercial_bp.rutas_escolares_yopal') }}">ruta escolar en Yopal</a>.
+        </p>
+    </div>
+</section>
+
+<section class="home-final-cta py-5 bg-light">
+    <div class="container text-center">
+        <h2 class="home-final-cta__title fw-bold">¿Necesitas transporte escolar en Casanare?</h2>
+        <p class="home-final-cta__text text-secondary">Cuentanos tu municipio y el colegio de tus hijos y te ayudamos a organizar la ruta.</p>
+        <div class="home-final-cta__actions d-flex justify-content-center gap-3">
+            <a href="{{ url_for('comercial_bp.home') }}#contacto" class="btn btn-primary btn-lg">Contactenos</a>
+            <a href="{{ url_for('comercial_bp.directorio') }}" class="btn btn-outline-dark btn-lg">Ver conductores</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

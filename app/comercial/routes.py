@@ -18,6 +18,16 @@ MESES_EN_ESPANOL = (
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 )
 
+# Municipios de Casanare que se mencionan en la pagina de cobertura. Sirve para
+# que las busquedas locales ("ruta escolar Aguazul", "transporte escolar
+# Villanueva") encuentren el texto sobre el servicio en el departamento.
+MUNICIPIOS_CASANARE = (
+    "Yopal", "Aguazul", "Villanueva", "Tauramena", "Monterrey", "Maní",
+    "Paz de Ariporo", "Pore", "Nunchía", "Orocué", "San Luis de Palenque",
+    "Trinidad", "Támara", "Hato Corozal", "Sabanalarga", "Sácama",
+    "Recetor", "Chámeza", "La Salina",
+)
+
 
 @comercial_bp.route("/")
 def home():
@@ -54,6 +64,21 @@ def terminos():
     hoy = datetime.utcnow()
     fecha_actualizacion = f"{hoy.day} de {MESES_EN_ESPANOL[hoy.month - 1]} de {hoy.year}"
     return render_template("comercial/terminos.html", fecha_actualizacion=fecha_actualizacion)
+
+
+@comercial_bp.route("/rutas-escolares-yopal")
+def rutas_escolares_yopal():
+    """Pagina dedicada al servicio de ruta escolar en Yopal (SEO local)."""
+    return render_template("comercial/rutas_escolares_yopal.html")
+
+
+@comercial_bp.route("/rutas-escolares-casanare")
+def rutas_escolares_casanare():
+    """Pagina de cobertura del servicio de ruta escolar en Casanare (SEO local)."""
+    return render_template(
+        "comercial/rutas_escolares_casanare.html",
+        municipios=MUNICIPIOS_CASANARE,
+    )
 
 
 @comercial_bp.route("/registro-conductor", methods=["POST"])
