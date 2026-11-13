@@ -12,6 +12,12 @@ from urllib.request import Request, urlopen
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 ARCGIS_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates"
 USER_AGENT = "RutaExacta/1.0 (+https://rutaexacta.local)"
+CASANARE_BOUNDS = {
+    "min_latitude": 4.15,
+    "max_latitude": 6.45,
+    "min_longitude": -73.25,
+    "max_longitude": -69.65,
+}
 
 
 def geocode_colombia_address(*parts: str) -> Optional[dict]:
@@ -62,12 +68,34 @@ _REGION_TOKENS = {"colombia", "casanare"}
 
 
 def _requested_city(parts: list[str]) -> str:
-    """Devuelve el municipio pedido (primer contexto que no sea region o pais)."""
-    for part in parts[1:]:
+    """Devuelve el municipio, priorizando el contexto mas cercano al pais."""
+    for part in reversed(parts[1:]):
         normalized = _normalize_text(part)
         if normalized and normalized not in _REGION_TOKENS:
             return normalized
     return ""
+
+
+def _is_within_casanare(result: dict) -> bool:
+    """Descarta geocodificaciones que claramente cayeron fuera de Casanare."""
+    try:
+        if isinstance(result.get("location"), dict):
+            latitude = float(result["location"]["y"])
+            longitude = float(result["location"]["x"])
+        else:
+            latitude = float(result["lat"])
+            longitude = float(result["lon"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    return (
+        CASANARE_BOUNDS["min_latitude"] <= latitude <= CASANARE_BOUNDS["max_latitude"]
+        and CASANARE_BOUNDS["min_longitude"] <= longitude <= CASANARE_BOUNDS["max_longitude"]
+    )
+
+
+def _requires_casanare_bounds(parts: list[str]) -> bool:
+    return any(_normalize_text(part) == "casanare" for part in parts[1:])
 
 
 def _has_street_level(value: str) -> bool:
@@ -131,6 +159,14 @@ def _normalize_road_text(value: str) -> str:
     normalized = re.sub(r"\b(tv|tr|transv)\b", "transversal", normalized)
     normalized = re.sub(r"\b(dg|diag)\b", "diagonal", normalized)
     normalized = re.sub(r"\b(nro|no|num|numero)\b", "#", normalized)
+    # Convierte la nomenclatura colombiana sin separadores al formato que
+    # entienden los geocodificadores: Calle 21 15A 30 -> Calle 21 # 15A-30.
+    normalized = re.sub(
+        r"\b(calle|carrera|transversal|diagonal|avenida)\s+"
+        r"(\d+\s*[a-z]?)\s+(?:#\s*)?(\d+\s*[a-z]?)(?:\s*-\s*|\s+)(\d+)\b",
+        r"\1 \2 # \3-\4",
+        normalized,
+    )
     normalized = re.sub(r"\besquina\s+con\b", "con", normalized)
     normalized = re.sub(r"\s*#\s*", " # ", normalized)
     normalized = re.sub(r"\s*-\s*", "-", normalized)
@@ -182,6 +218,8 @@ def _find_best_result(parts: list[str]) -> Optional[dict]:
     for query in queries:
         results = _search_nominatim(query)
         for result in results:
+            if _requires_casanare_bounds(parts) and not _is_within_casanare(result):
+                continue
             score = _score_result(result, parts)
             if score > best_score:
                 best_result = result
@@ -200,6 +238,8 @@ def _find_best_result_arcgis(parts: list[str]) -> Optional[dict]:
     for query in queries:
         results = _search_arcgis(query)
         for result in results:
+            if _requires_casanare_bounds(parts) and not _is_within_casanare(result):
+                continue
             score = _score_arcgis_result(result, parts)
             if score > best_score:
                 best_result = result

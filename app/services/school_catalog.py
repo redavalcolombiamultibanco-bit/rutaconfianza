@@ -40,7 +40,7 @@ CASANARE_MUNICIPALITIES = [
 
 
 def _catalog_path() -> Path:
-    return Path(__file__).resolve().parents[4] / CATALOG_FILENAME
+    return Path(__file__).resolve().with_name(CATALOG_FILENAME)
 
 
 def _normalize(value: str) -> str:
