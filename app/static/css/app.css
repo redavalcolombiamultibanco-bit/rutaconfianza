@@ -3812,7 +3812,7 @@ body.rx-app-view {
 }
 
 /* Imagen de marca en la seccion de contacto; el formulario conserva su estilo. */
-#contacto {
+section#contacto {
     background-image:
         linear-gradient(90deg, rgba(8, 22, 38, 0.12), rgba(8, 22, 38, 0.2)),
         url("../images/contacto-fondo.jpg");
@@ -3844,7 +3844,7 @@ body.rx-app-view {
 }
 
 @media (max-width: 575.98px) {
-    #contacto {
+    section#contacto {
         background-position: 34% center;
     }
 }
