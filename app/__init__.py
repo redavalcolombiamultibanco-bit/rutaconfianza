@@ -98,6 +98,13 @@ def _register_security_headers(app):
                 "Strict-Transport-Security",
                 "max-age=31536000; includeSubDomains",
             )
+        # El HTML nunca se cachea: asi el navegador siempre carga el JS/CSS
+        # versionados mas recientes y no se queda con un app.js viejo.
+        content_type = response.headers.get("Content-Type", "")
+        if content_type.startswith("text/html"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         return response
 
 
