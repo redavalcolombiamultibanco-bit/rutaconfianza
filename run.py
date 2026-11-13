@@ -8,6 +8,7 @@ from config import DevelopmentConfig, ProductionConfig
 # La decision de entorno se resuelve una sola vez para que el resto de la app
 # siempre reciba la configuracion correcta desde el arranque.
 # En Render (o con FLASK_ENV=production) se usa la configuracion de produccion.
+# El auto-deploy de Render se activo con "On Commit" el 13/11/2026.
 IS_PRODUCTION = os.getenv("FLASK_ENV", "").lower() == "production" or bool(os.getenv("RENDER"))
 
 # `app` queda expuesta a nivel de modulo porque Gunicorn importa `run:app`.
