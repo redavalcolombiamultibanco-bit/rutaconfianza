@@ -121,7 +121,7 @@
                         <span class="status-pill status-pill--ok">Activa</span>
                     </div>
                     <div class="small text-secondary mt-1">{{ ruta.conductor.nombre_completo if ruta.conductor else "Sin conductor" }}</div>
-                    <a class="small fw-semibold text-primary" href="{{ url_for('tracking_bp.sala_ruta', pin=ruta.pin_acceso) }}" target="_blank" rel="noopener">Abrir portal familias</a>
+                    <a class="small fw-semibold text-primary" href="{{ url_for('tracking_bp.sala_ruta', ruta_id=ruta.id) }}" target="_blank" rel="noopener">Abrir portal familias</a>
                 </div>
                 {% else %}
                 <div class="empty-state">

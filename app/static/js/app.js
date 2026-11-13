@@ -17,7 +17,6 @@
         driverWatchId: null,
         wakeLock: null,
         routeId: null,
-        routePin: null,
         driverMapContext: null,
         driverRouteActive: false,
         adminMapContext: null,
@@ -925,10 +924,10 @@
             });
     }
 
-    function loadRouteHistory(mapContext, rutaId, pin, onError) {
+    function loadRouteHistory(mapContext, rutaId, onError) {
         // Recupera el recorrido ya guardado para que el mapa no arranque vacio
         // cuando alguien entra a mitad de la jornada.
-        const endpoint = `/tracking/api/ruta/${rutaId}/recorrido?pin=${encodeURIComponent(pin)}`;
+        const endpoint = `/tracking/api/ruta/${rutaId}/recorrido`;
         fetch(endpoint)
             .then(function (response) {
                 if (!response.ok) {
@@ -958,10 +957,10 @@
             });
     }
 
-    function loadRoutePlan(mapContext, rutaId, pin, onError) {
+    function loadRoutePlan(mapContext, rutaId, onError) {
         // Carga paradas, destino y origen base; despues el frontend decide si
         // recalcula desde el origen fijo o desde la ubicacion viva del bus.
-        const endpoint = `/tracking/api/ruta/${rutaId}/plan?pin=${encodeURIComponent(pin)}`;
+        const endpoint = `/tracking/api/ruta/${rutaId}/plan`;
         fetch(endpoint)
             .then(function (response) {
                 if (!response.ok) {
@@ -1027,7 +1026,7 @@
                 }
                 markHouseAsPlaced(result.data.estudiante_id);
                 setDriverNotice(`${result.data.nombre}: casita ubicada. La ruta se esta recalculando.`);
-                loadRoutePlan(mapContext, mapContext.rutaId, mapContext.pin, function () {
+                loadRoutePlan(mapContext, mapContext.rutaId, function () {
                     setDriverNotice("No fue posible refrescar las casitas y la ruta sugerida.");
                 });
             })
@@ -1431,15 +1430,14 @@
         refreshPlannedRoute(mapContext);
     }
 
-    function joinRouteRoom(rutaId, pin) {
-        if (!socket || !rutaId || !pin) {
+    function joinRouteRoom(rutaId) {
+        if (!socket || !rutaId) {
             return;
         }
         // Se guarda la sala activa para reingresar automaticamente al
         // reconectar Socket.IO sin perder contexto.
         appState.routeId = rutaId;
-        appState.routePin = pin;
-        socket.emit("room:join", { ruta_id: rutaId, pin: pin });
+        socket.emit("room:join", { ruta_id: rutaId });
     }
 
     function setupTrackingPage() {
@@ -1450,14 +1448,13 @@
             return;
         }
         const rutaId = parseInt(mapNode.dataset.rutaId, 10);
-        const pin = mapNode.dataset.pin;
         const mapContext = createMap(mapNode);
-        loadRouteHistory(mapContext, rutaId, pin);
-        loadRoutePlan(mapContext, rutaId, pin);
+        loadRouteHistory(mapContext, rutaId);
+        loadRoutePlan(mapContext, rutaId);
         if (!socket) {
             return;
         }
-        joinRouteRoom(rutaId, pin);
+        joinRouteRoom(rutaId);
         socket.on("room:joined", function (payload) {
             const tracking = payload && payload.tracking;
             if (!tracking || tracking.ruta_id !== rutaId) {
@@ -1501,14 +1498,14 @@
         });
         socket.on("tracking:plan_updated", function (payload) {
             if (payload.ruta_id === rutaId) {
-                loadRoutePlan(mapContext, rutaId, pin);
+                loadRoutePlan(mapContext, rutaId);
             }
         });
 
         // Respaldo para que el portal de familias no se quede atras si el
         // navegador pierde algun evento en vivo.
         window.setInterval(function () {
-            loadRouteHistory(mapContext, rutaId, pin);
+            loadRouteHistory(mapContext, rutaId);
             refreshPlannedRoute(mapContext);
         }, 8000);
     }
@@ -1604,8 +1601,7 @@
         }
 
         const rutaId = parseInt(mapNode.dataset.rutaId, 10);
-        const pin = mapNode.dataset.pin;
-        if (!rutaId || !pin) {
+        if (!rutaId) {
             return;
         }
 
@@ -1637,7 +1633,7 @@
         if (!socket) {
             return;
         }
-        socket.emit("room:join", { ruta_id: rutaId, pin: pin });
+        socket.emit("room:join", { ruta_id: rutaId });
         socket.on("tracking:location", function (payload) {
             if (payload.ruta_id !== rutaId) {
                 return;
@@ -1785,7 +1781,6 @@
         form.addEventListener("submit", function (event) {
             event.preventDefault();
             const rutaId = parseInt(form.dataset.rutaId, 10);
-            const pin = form.dataset.pin;
             const remitenteTipo = form.dataset.remitenteTipo || "padre";
             const sender = document.getElementById("chatSender");
             const message = document.getElementById("chatMessage");
@@ -1796,7 +1791,6 @@
             // misma ruta lo vean sin recargar.
             socket.emit("chat:message", {
                 ruta_id: rutaId,
-                pin: pin,
                 remitente_tipo: remitenteTipo,
                 remitente_nombre: sender.value.trim(),
                 contenido: message.value.trim(),
@@ -1906,7 +1900,6 @@
         }
         const payload = {
             ruta_id: rutaId,
-            pin: appState.routePin,
             lat: position.coords.latitude,
             lng: position.coords.longitude,
             accuracy: position.coords.accuracy,
@@ -2219,18 +2212,16 @@
             return;
         }
         const rutaId = parseInt(driverPanel.dataset.rutaId, 10);
-        const pin = driverPanel.dataset.pin;
         const recorridoActivo = driverPanel.dataset.recorridoActivo === "true";
         const mapContext = createMap(document.getElementById("driverMap"));
         appState.driverMapContext = mapContext;
         appState.driverRouteActive = recorridoActivo;
         mapContext.rutaId = rutaId;
-        mapContext.pin = pin;
         mapContext.allowHouseEditing = true;
-        loadRouteHistory(mapContext, rutaId, pin, function () {
+        loadRouteHistory(mapContext, rutaId, function () {
             setDriverNotice("No fue posible cargar el trayecto guardado en el mapa.");
         });
-        loadRoutePlan(mapContext, rutaId, pin, function () {
+        loadRoutePlan(mapContext, rutaId, function () {
             setDriverNotice("No fue posible cargar las paradas georreferenciadas de la ruta.");
             setVoiceStatus("Sin datos");
         });
@@ -2239,7 +2230,7 @@
         if (!socket) {
             return;
         }
-        joinRouteRoom(rutaId, pin);
+        joinRouteRoom(rutaId);
 
         if (recorridoActivo) {
             startDriverTracking(rutaId);
@@ -2247,7 +2238,7 @@
 
         document.querySelectorAll(".js-route-start").forEach(function (button) {
             button.addEventListener("click", function () {
-                socket.emit("route:start", { ruta_id: parseInt(button.dataset.rutaId, 10), pin: pin });
+                socket.emit("route:start", { ruta_id: parseInt(button.dataset.rutaId, 10) });
                 setGpsStatus("warning", "Activando ruta");
                 setDriverNotice("Activando la ruta y preparando el GPS del teléfono.");
             });
@@ -2256,7 +2247,7 @@
         document.querySelectorAll(".js-route-finish").forEach(function (button) {
             button.addEventListener("click", function () {
                 stopLocationWatch();
-                socket.emit("route:finish", { ruta_id: parseInt(button.dataset.rutaId, 10), pin: pin });
+                socket.emit("route:finish", { ruta_id: parseInt(button.dataset.rutaId, 10) });
                 setGpsStatus("ready", "GPS detenido");
                 setDriverNotice("Ruta finalizada. La transmisión de ubicación fue detenida.");
             });
@@ -2266,7 +2257,6 @@
             button.addEventListener("click", function () {
                 socket.emit("attendance:update", {
                     ruta_id: parseInt(button.dataset.rutaId, 10),
-                    pin: pin,
                     estudiante_id: parseInt(button.dataset.estudianteId, 10),
                     estado: button.dataset.estado,
                 });
@@ -2323,7 +2313,7 @@
         });
         socket.on("tracking:plan_updated", function (payload) {
             if (payload.ruta_id === rutaId) {
-                loadRoutePlan(mapContext, rutaId, pin, function () {
+                loadRoutePlan(mapContext, rutaId, function () {
                     setDriverNotice("No fue posible refrescar las casitas y la ruta sugerida.");
                 });
             }
@@ -2344,8 +2334,8 @@
         });
 
         socket.on("connect", function () {
-            if (appState.routeId && appState.routePin) {
-                joinRouteRoom(appState.routeId, appState.routePin);
+            if (appState.routeId) {
+                joinRouteRoom(appState.routeId);
             }
             if (appState.driverWatchId === null) {
                 setGpsStatus("ready", "Conexión lista");

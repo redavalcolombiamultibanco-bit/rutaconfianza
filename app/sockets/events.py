@@ -16,6 +16,7 @@ from app.services.rate_limit import (
     olvidar,
     registrar_fallo,
 )
+from app.services.route_access import route_for_session
 
 # Tope de mensajes por minuto para que nadie inunde el chat de una ruta.
 MAX_MENSAJES_CHAT = 20
@@ -249,15 +250,16 @@ def register_socket_events(socketio):
 
 
 def _resolve_route(data):
-    # La combinacion ruta_id + PIN evita que alguien se una por accidente a una
-    # ruta distinta aunque conozca solo uno de los dos datos.
     if not isinstance(data, dict):
         return None
     ruta_id = data.get("ruta_id")
-    pin = data.get("pin")
-    if not ruta_id or not pin:
+    if not ruta_id:
         return None
-    return Ruta.query.filter_by(id=ruta_id, pin_acceso=str(pin)).first()
+    try:
+        ruta_id = int(ruta_id)
+    except (TypeError, ValueError):
+        return None
+    return route_for_session(ruta_id)
 
 
 def _require_route_driver(ruta):

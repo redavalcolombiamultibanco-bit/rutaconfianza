@@ -8,11 +8,15 @@
             <div class="tracking-live__hero-copy">
                 <span class="tracking-live__eyebrow">Seguimiento familiar</span>
                 <h1 class="tracking-live__title mb-2">{{ ruta.nombre }}</h1>
-                <p class="tracking-live__meta mb-0">Conductor: {{ ruta.conductor.nombre_completo if ruta.conductor else "No asignado" }} · {{ ruta.ciudad or "Ciudad pendiente" }} · PIN {{ ruta.pin_acceso }}</p>
+                <p class="tracking-live__meta mb-0">Conductor: {{ ruta.conductor.nombre_completo if ruta.conductor else "No asignado" }} · {{ ruta.ciudad or "Ciudad pendiente" }}</p>
             </div>
             <span id="routeStatusBadge" class="tracking-live__badge badge rounded-pill px-3 py-2 text-bg-{% if ruta.recorrido_activo %}success{% else %}secondary{% endif %}">
                 {% if ruta.recorrido_activo %}Ruta en vivo{% else %}Ruta en espera{% endif %}
             </span>
+            <form method="post" action="{{ url_for('tracking_bp.salir') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-outline-secondary btn-sm rounded-pill" type="submit">Cerrar sesión</button>
+            </form>
         </div>
 
         <div class="row g-4 align-items-start">
@@ -28,7 +32,6 @@
                     </div>
                     <div id="trackingMap" class="tracking-map"
                         data-ruta-id="{{ ruta.id }}"
-                        data-pin="{{ ruta.pin_acceso }}"
                         data-lat="{{ map_defaults.lat }}"
                         data-lng="{{ map_defaults.lng }}"
                         data-has-location="{{ 'true' if ruta.latitud_actual is not none and ruta.longitud_actual is not none else 'false' }}"
@@ -105,7 +108,7 @@
                             <div class="text-secondary small chat-box__empty">Todavía no hay mensajes en esta ruta.</div>
                             {% endfor %}
                         </div>
-                        <form id="chatForm" class="d-grid gap-2 tracking-live__chat-form" data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}" data-remitente-tipo="padre">
+                        <form id="chatForm" class="d-grid gap-2 tracking-live__chat-form" data-ruta-id="{{ ruta.id }}" data-remitente-tipo="padre">
                             <input id="chatSender" class="form-control" placeholder="Tu nombre" autocomplete="name" required>
                             <textarea id="chatMessage" class="form-control" rows="3" placeholder="Escribe un mensaje para el grupo" required></textarea>
                             <button class="btn btn-primary rounded-pill" type="submit"><i class="bi bi-send me-2"></i>Enviar mensaje</button>
@@ -121,7 +124,6 @@
 <script>
     window.rutaExactaTracking = {
         rutaId: {{ ruta.id }},
-        pin: "{{ ruta.pin_acceso }}",
     };
 </script>
 {% endblock %}

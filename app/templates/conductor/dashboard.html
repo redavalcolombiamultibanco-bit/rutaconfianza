@@ -330,7 +330,7 @@
                         <span id="driverRouteStateHero">{% if ruta and ruta.recorrido_activo %}En recorrido{% else %}En espera{% endif %}</span>
                     </span>
                     {% if ruta %}
-                    <a class="driver-parent-link" href="{{ url_for('tracking_bp.sala_ruta', pin=ruta.pin_acceso) }}"><i class="bi bi-box-arrow-up-right me-1"></i> Portal familias</a>
+                    <a class="driver-parent-link" href="{{ url_for('tracking_bp.sala_ruta', ruta_id=ruta.id) }}"><i class="bi bi-box-arrow-up-right me-1"></i> Portal familias</a>
                     {% endif %}
                 </div>
             </div>
@@ -353,7 +353,7 @@
             <div class="row g-4 align-items-stretch">
                 <div class="col-xl-4">
                     <section class="driver-card driver-status-card h-100" id="driverPanel"
-                        data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}" data-conductor-id="{{ ruta.conductor_id }}"
+                        data-ruta-id="{{ ruta.id }}" data-conductor-id="{{ ruta.conductor_id }}"
                         data-recorrido-activo="{{ 'true' if ruta.recorrido_activo else 'false' }}">
                         <div class="driver-status-heading d-flex justify-content-between align-items-center gap-3">
                             <div>
@@ -420,7 +420,7 @@
                             </div>
                         </div>
                         <div class="driver-map-stage">
-                            <div id="driverMap" class="driver-map" data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}"
+                            <div id="driverMap" class="driver-map" data-ruta-id="{{ ruta.id }}"
                                 data-lat="{{ map_defaults.lat }}" data-lng="{{ map_defaults.lng }}"
                                 data-has-location="{{ 'true' if ruta.latitud_actual is not none and ruta.longitud_actual is not none else 'false' }}"
                                 data-zoom="{{ map_defaults.zoom }}"></div>
@@ -514,7 +514,7 @@
                                     <div class="text-center pt-4 text-secondary small">Sin mensajes recientes.</div>
                                     {% endfor %}
                                 </div>
-                                <form id="chatForm" class="driver-chat-form" data-ruta-id="{{ ruta.id }}" data-pin="{{ ruta.pin_acceso }}" data-remitente-tipo="conductor">
+                                <form id="chatForm" class="driver-chat-form" data-ruta-id="{{ ruta.id }}" data-remitente-tipo="conductor">
                                     <input type="hidden" id="chatSender" value="{{ ruta.conductor.nombre_completo if ruta.conductor else 'Conductor' }}">
                                     <input id="chatMessage" class="driver-chat-input" placeholder="Enviar una novedad a las familias..." aria-label="Mensaje para las familias">
                                     <button class="driver-chat-send" type="submit" aria-label="Enviar mensaje"><i class="bi bi-send-fill"></i></button>
