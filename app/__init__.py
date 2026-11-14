@@ -2,16 +2,17 @@
 from importlib import import_module
 from pathlib import Path
 import hmac
+import json
 import mimetypes
 import os
 import secrets
 import threading
 import time
-from flask import Flask, Response, abort, jsonify, request, send_from_directory, session
+from flask import Flask, Response, abort, has_request_context, jsonify, request, send_from_directory, session
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect, text
+from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import make_url
 from werkzeug.security import generate_password_hash
 
@@ -31,6 +32,106 @@ def _configure_database_pool(app):
     options.setdefault("max_overflow", int(os.getenv("SQLALCHEMY_MAX_OVERFLOW", "30")))
     options.setdefault("pool_timeout", float(os.getenv("SQLALCHEMY_POOL_TIMEOUT", "30")))
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = options
+
+
+def _instrument_database_pool(app):
+    """Registra temporalmente ocupacion, rutas y antiguedad de conexiones activas."""
+    pool = db.engine.pool
+    pool_size = getattr(pool, "size", None)
+    if pool_size is None:
+        return
+    max_overflow = getattr(pool, "_max_overflow", 0)
+    capacity = pool_size() + max_overflow
+    state = {"active": {}, "reported_thresholds": set(), "lock": threading.Lock()}
+
+    def report(hypothesis_id, location, message, data):
+        payload = {
+            "sessionId": "render-500-error",
+            "runId": "pre-fix",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "msg": f"[DEBUG] {message}",
+            "data": data,
+        }
+        app.logger.warning("DB_POOL_DIAGNOSTIC %s", json.dumps(payload, separators=(",", ":")))
+
+    def request_label():
+        if not has_request_context():
+            return "background"
+        label = request.path
+        event_info = getattr(request, "event", None)
+        if isinstance(event_info, dict) and event_info.get("message"):
+            label = f"{label}:{event_info['message']}"
+        return label
+
+    report(
+        "B",
+        "app.create_app.pool",
+        "database pool configured",
+        {"pool_size": pool_size(), "max_overflow": max_overflow, "capacity": capacity},
+    )
+
+    # #region debug-point B:pool-checkout
+    @event.listens_for(pool, "checkout")
+    def _record_pool_checkout(dbapi_connection, connection_record, connection_proxy):
+        now = time.monotonic()
+        key = id(connection_record)
+        label = request_label()
+        thresholds = {max(1, int(capacity * ratio)) for ratio in (0.8, 0.9, 1.0)}
+        with state["lock"]:
+            state["active"][key] = {"started": now, "path": label}
+            checked_out = len(state["active"])
+            new_threshold = next(
+                (threshold for threshold in sorted(thresholds) if checked_out >= threshold and threshold not in state["reported_thresholds"]),
+                None,
+            )
+            if new_threshold is not None:
+                state["reported_thresholds"].add(new_threshold)
+                active = sorted(
+                    (
+                        {"path": item["path"], "age_ms": int((now - item["started"]) * 1000)}
+                        for item in state["active"].values()
+                    ),
+                    key=lambda item: item["age_ms"],
+                    reverse=True,
+                )[:10]
+            else:
+                active = []
+        if new_threshold is not None:
+            report(
+                "B",
+                "sqlalchemy.pool.checkout",
+                "database pool reached pressure threshold",
+                {
+                    "checked_out": checked_out,
+                    "threshold": new_threshold,
+                    "pool_size": pool_size(),
+                    "max_overflow": max_overflow,
+                    "active_oldest": active,
+                },
+            )
+    # #endregion
+
+    # #region debug-point C:pool-checkin
+    @event.listens_for(pool, "checkin")
+    def _record_pool_checkin(dbapi_connection, connection_record):
+        now = time.monotonic()
+        with state["lock"]:
+            checked_out = len(state["active"])
+            item = state["active"].pop(id(connection_record), None)
+            if item is None:
+                return
+            age_ms = int((now - item["started"]) * 1000)
+            should_report = age_ms >= 5000
+        if should_report:
+            hypothesis_id = "D" if item["path"] == "background" or item["path"].startswith("/socket.io") else "C"
+            report(
+                hypothesis_id,
+                "sqlalchemy.pool.checkin",
+                "database connection held for an extended period",
+                {"path": item["path"], "age_ms": age_ms, "checked_out_before_return": checked_out},
+            )
+    # #endregion
 
 
 def create_app(config_object=None):
@@ -66,6 +167,7 @@ def create_app(config_object=None):
         db.create_all()
         _ensure_runtime_schema()
         _ensure_default_admin_user(app)
+        _instrument_database_pool(app)
     _programar_respaldo_automatico(app)
     return app
 
