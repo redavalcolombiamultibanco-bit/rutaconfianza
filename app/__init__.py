@@ -12,11 +12,25 @@ from flask_migrate import Migrate
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text
+from sqlalchemy.engine import make_url
 from werkzeug.security import generate_password_hash
 
 db = SQLAlchemy()
 migrate = Migrate()
 socketio = SocketIO(async_mode="threading")
+
+
+def _configure_database_pool(app):
+    """Ajusta el pool para atender solicitudes concurrentes sin alterar SQLite en memoria."""
+    database_url = make_url(app.config["SQLALCHEMY_DATABASE_URI"])
+    if database_url.get_backend_name() == "sqlite" and database_url.database in (None, "", ":memory:"):
+        return
+
+    options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS") or {})
+    options.setdefault("pool_size", int(os.getenv("SQLALCHEMY_POOL_SIZE", "20")))
+    options.setdefault("max_overflow", int(os.getenv("SQLALCHEMY_MAX_OVERFLOW", "30")))
+    options.setdefault("pool_timeout", float(os.getenv("SQLALCHEMY_POOL_TIMEOUT", "30")))
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = options
 
 
 def create_app(config_object=None):
@@ -27,6 +41,7 @@ def create_app(config_object=None):
     _load_default_config(app)
     if config_object:
         app.config.from_object(config_object)
+    _configure_database_pool(app)
     # Estas rutas viven en la factory porque deben existir incluso si algun
     # blueprint aun no se ha cargado o se implementa despues.
     _register_health_routes(app)
