@@ -110,6 +110,16 @@
     .driver-map-caption { background: rgba(255,255,255,.94); bottom: 1rem; color: var(--driver-ink); font-size: .72rem; left: 1rem; padding: .66rem .8rem; position: absolute; z-index: 450; }
     .driver-map-caption span { color: var(--driver-muted); display: block; font-size: .64rem; margin-top: .1rem; }
 
+    /* Velocimetro flotante: arriba-izquierda, debajo del boton "Centrar punto"
+       (que es pequeno y solo ocupa la primera fila). Asi evita chocar con la
+       atribucion de Leaflet abajo-derecha ni con los controles de capas/zoom
+       de arriba-derecha. En pantalla completa va a abajo-izquierda. */
+    .driver-speed-pill { align-items: center; background: rgba(16,33,43,.92); border-radius: 12px; box-shadow: 0 5px 16px rgba(0,0,0,.18); color: #fff; display: inline-flex; gap: .5rem; top: 4.5rem; left: 1rem; padding: .5rem .72rem; position: absolute; z-index: 460; }
+    .driver-speed-pill i { color: var(--driver-accent); font-size: 1rem; }
+    .driver-speed-value { font-size: 1.5rem; font-weight: 800; line-height: 1; min-width: 2.6ch; text-align: right; }
+    .driver-speed-unit { color: rgba(255,255,255,.72); font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .driver-map-card.is-expanded .driver-speed-pill { top: auto; bottom: 1rem; left: 1rem; }
+
     /* Modo ampliado: mapa a pantalla completa con guia tipo Android Auto. */
     .driver-map-stage { position: relative; }
     .driver-map-hud { display: none; inset: 0; pointer-events: none; position: absolute; z-index: 1200; }
@@ -437,6 +447,11 @@
                                     <div class="driver-hud-stops-head"><i class="bi bi-list-ol me-1"></i>Orden de la ruta</div>
                                     <ol class="driver-hud-stops-list" id="driverHudStops"></ol>
                                 </div>
+                            </div>
+                            <div class="driver-speed-pill" id="driverSpeedPill" aria-live="polite" title="Velocidad actual del bus">
+                                <i class="bi bi-speedometer2"></i>
+                                <span class="driver-speed-value" id="driverSpeedValue">--</span>
+                                <span class="driver-speed-unit">km/h</span>
                             </div>
                         </div>
                         <div class="driver-map-caption"><strong>{{ ruta.nombre }}</strong><span>Recorrido real, casitas de estudiantes y ruta sugerida.</span></div>

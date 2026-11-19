@@ -17,11 +17,13 @@ from app.models import (
     SuscripcionConductor,
 )
 
+# Formatos de fecha usados en todos los reportes.
 FORMATO_FECHA = "%Y-%m-%d %H:%M"
 FORMATO_DIA = "%Y-%m-%d"
 
 
 def _fecha_hora(valor):
+    """Da formato legible a una fecha/hora; devuelve "" si el valor no es fecha."""
     if isinstance(valor, datetime):
         return valor.strftime(FORMATO_FECHA)
     if isinstance(valor, date):
@@ -30,6 +32,7 @@ def _fecha_hora(valor):
 
 
 def _texto(valor, por_defecto=""):
+    """Convierte a texto recortado; usa `por_defecto` si viene vacio o None."""
     if valor is None:
         return por_defecto
     texto = str(valor).strip()
@@ -37,10 +40,12 @@ def _texto(valor, por_defecto=""):
 
 
 def _si_no(valor):
+    """Traduce un booleano a "Si"/"No" para los reportes."""
     return "Si" if valor else "No"
 
 
 def _estado_asistencia(estado):
+    """Etiqueta en espanol de un estado de asistencia; si no lo conoce, lo deja tal cual."""
     etiquetas = {
         EstadoAsistencia.SUBIO: "Subio",
         EstadoAsistencia.BAJO: "Bajo",
@@ -53,6 +58,7 @@ def _estado_asistencia(estado):
 # --- Constructores de cada reporte -------------------------------------------
 
 def _reporte_conductores(desde=None, hasta=None):
+    """Devuelve (columnas, filas) del reporte de conductores y su suscripcion."""
     columnas = [
         "Conductor", "Documento", "Telefono", "Correo", "Vehiculo", "Placa",
         "Ciudad", "Estado suscripcion", "Vence", "Activo", "GPS habilitado",
@@ -76,6 +82,7 @@ def _reporte_conductores(desde=None, hasta=None):
 
 
 def _reporte_rutas(desde=None, hasta=None):
+    """Devuelve (columnas, filas) del reporte de rutas con conductor y paradas."""
     columnas = [
         "Ruta", "Codigo", "PIN", "Ciudad", "Conductor", "Origen", "Destino",
         "Salida", "Regreso", "Paradas", "Activa", "En recorrido",
@@ -100,6 +107,7 @@ def _reporte_rutas(desde=None, hasta=None):
 
 
 def _reporte_estudiantes(desde=None, hasta=None):
+    """Devuelve (columnas, filas) del reporte de estudiantes y su georreferenciacion."""
     columnas = [
         "Estudiante", "Documento", "Ruta", "Institucion", "Grado", "Direccion",
         "Barrio", "Ciudad", "Acudiente", "Telefono acudiente", "Orden",
@@ -128,6 +136,11 @@ def _reporte_estudiantes(desde=None, hasta=None):
 
 
 def _reporte_asistencias(desde=None, hasta=None):
+    """Devuelve (columnas, filas) del reporte de asistencias.
+
+    Acepta un rango de fechas opcional (`desde`/`hasta`) que filtra por la fecha
+    de operacion; el resultado va del registro mas reciente al mas antiguo.
+    """
     columnas = [
         "Fecha", "Ruta", "Estudiante", "Conductor", "Estado",
         "Hora subida", "Hora bajada", "Observacion",
@@ -155,6 +168,7 @@ def _reporte_asistencias(desde=None, hasta=None):
 
 
 def _reporte_suscripciones(desde=None, hasta=None):
+    """Devuelve (columnas, filas) del historial de suscripciones de los conductores."""
     columnas = [
         "Conductor", "Estado", "Fecha inicio", "Fecha fin", "Valor",
         "Observaciones", "Activado por", "Registrado",
@@ -176,6 +190,7 @@ def _reporte_suscripciones(desde=None, hasta=None):
 
 
 def _reporte_mensajes(desde=None, hasta=None):
+    """Devuelve (columnas, filas) de los mensajes recibidos en el formulario web."""
     columnas = ["Fecha", "Nombre", "Telefono", "Correo", "Asunto", "Mensaje", "Atendido"]
     filas = []
     for mensaje in MensajeContacto.query.order_by(MensajeContacto.created_at.desc()).all():
@@ -223,6 +238,8 @@ def _reporte_resumen(desde=None, hasta=None):
     return ["Indicador", "Valor"], [[nombre, valor] for nombre, valor in indicadores]
 
 
+# Catalogo de reportes disponibles: cada clave es el nombre publico y contiene
+# el titulo, la descripcion, el icono y la funcion que arma las filas.
 REPORTES = {
     "conductores": {
         "titulo": "Conductores",
@@ -271,7 +288,10 @@ REPORTES = {
 
 
 def construir_reporte(nombre, desde=None, hasta=None):
-    """Devuelve (definicion, columnas, filas) para el reporte solicitado."""
+    """Devuelve (definicion, columnas, filas) para el reporte solicitado.
+
+    Lanza KeyError si el nombre no esta en el catalogo REPORTES.
+    """
     definicion = REPORTES.get(nombre)
     if definicion is None:
         raise KeyError(f"El reporte '{nombre}' no existe.")

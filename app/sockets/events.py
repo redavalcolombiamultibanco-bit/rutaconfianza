@@ -1,4 +1,19 @@
-"""Eventos Socket.IO para GPS, asistencia y chat por ruta."""
+"""Eventos Socket.IO para GPS, asistencia y chat por ruta.
+
+Este modulo concentra toda la comunicacion en tiempo real de la aplicacion.
+El flujo general es:
+
+1. Cada cliente (conductor, familia o admin) abre una conexion Socket.IO.
+2. El cliente pide unirse a la sala de una ruta con el evento "room:join"
+   enviando el ruta_id y, cuando aplica, el PIN de acceso.
+3. El servidor valida el acceso y mete al cliente en la sala de esa ruta
+   (room). A partir de ahi solo recibira los eventos de ESA ruta.
+4. El conductor emite eventos de GPS, asistencia y chat; el servidor los
+   valida, los guarda en la base de datos y los reenvia a la sala.
+
+El aislamiento por sala (rooms) es clave: los mensajes de chat y el GPS de una
+ruta nunca llegan a clientes de otra ruta.
+"""
 from datetime import date, datetime
 import math
 from flask import request, session
@@ -29,13 +44,22 @@ VENTANA_CHAT_SEGUNDOS = 60
 
 
 def register_socket_events(socketio):
-    """Registra todos los eventos Socket.IO una sola vez."""
+    """Registra todos los eventos Socket.IO una sola vez.
+
+    Se guarda una marca en el objeto `socketio` para que, si la funcion se
+    vuelve a llamar (por ejemplo al recargar el modulo), no se dupliquen los
+    manejadores. Registra un @socketio.on(...) por cada tipo de evento.
+    """
     if getattr(socketio, "_ruta_exacta_events_registered", False):
         return
     socketio._ruta_exacta_events_registered = True
 
     @socketio.on("connect")
     def handle_connect():
+        # Evento automatico al abrir la conexion. NO requiere autenticacion:
+        # solo confirma el enlace y entrega el identificador de sesion (sid),
+        # la hora del servidor y un mensaje de bienvenida. Se envia unicamente
+        # al cliente que se acaba de conectar.
         emit(
             "system:connected",
             {
@@ -47,8 +71,18 @@ def register_socket_events(socketio):
 
     @socketio.on("room:join")
     def handle_room_join(data):
-        # Cada cliente se une a la sala de su ruta para recibir solo su propio
-        # GPS, asistencias y mensajes en tiempo real.
+        # Emitido por el cliente (familia, conductor o admin) para entrar a la
+        # sala (room) de una ruta. Payload esperado: {"ruta_id": ..., "pin": ...}.
+        # Aqui esta la validacion de acceso: la sesion del conductor o el PIN
+        # de la ruta deben autorizar la entrada (ver `_resolve_route`).
+        #
+        # Anti fuerza bruta: si la misma IP acumula varios intentos fallidos de
+        # PIN se bloquea temporalmente (el bloqueo se comparte con las rutas
+        # HTTP mediante `rate_limit`).
+        #
+        # Al entrar, el cliente recibe "room:joined" con el estado de tracking
+        # actual para pintar el mapa de inmediato y, desde ese momento, queda
+        # suscrito a todo lo que se emita en esa sala.
         clave = f"pin-sala:{cliente_ip()}"
         espera = bloqueo_restante(clave)
         if espera:
@@ -72,6 +106,9 @@ def register_socket_events(socketio):
 
     @socketio.on("room:leave")
     def handle_room_leave(data):
+        # Emitido por el cliente para salir de la sala de su ruta (por ejemplo
+        # al cerrar la pantalla de seguimiento). Payload: {"ruta_id": ...}.
+        # Deja de recibir eventos de esa ruta hasta volver a unirse.
         ruta = _resolve_route(data)
         if not ruta:
             return _emit_error("No fue posible identificar la ruta para salir de la sala.")
@@ -80,6 +117,15 @@ def register_socket_events(socketio):
 
     @socketio.on("route:start")
     def handle_route_start(data):
+        # Emitido por el CONDUCTOR al comenzar la jornada. Payload:
+        # {"ruta_id": ...}. Solo el conductor autenticado de esa ruta puede
+        # hacerlo (ver `_require_route_driver`) y ademas necesita una
+        # suscripcion que permita transmitir GPS.
+        #
+        # Deja la ruta en estado "en recorrido", reinicia contadores/ubicacion y
+        # borra la traza anterior del dia. El resultado se publica en la sala de
+        # la ruta como "tracking:route_status" para que familias y admin vean
+        # que el seguimiento arranco.
         ruta = _resolve_route(data)
         if not ruta:
             return _emit_error("La ruta indicada no existe.")
@@ -113,6 +159,11 @@ def register_socket_events(socketio):
 
     @socketio.on("route:finish")
     def handle_route_finish(data):
+        # Emitido por el CONDUCTOR al terminar la jornada. Payload:
+        # {"ruta_id": ...}. Marca la ruta como "sin recorrido", guarda la hora
+        # de fin y avisa a la sala con "tracking:route_status" para que las
+        # familias dejen de esperar el GPS en vivo. No borra la traza: solo
+        # deja de aceptar nuevas ubicaciones hasta el siguiente inicio.
         ruta = _resolve_route(data)
         if not ruta:
             return _emit_error("La ruta indicada no existe.")
@@ -133,6 +184,17 @@ def register_socket_events(socketio):
 
     @socketio.on("location:update")
     def handle_location_update(data):
+        # Evento mas frecuente del sistema. Emitido por el GPS del telefono del
+        # CONDUCTOR. Payload esperado: {"ruta_id", "lat", "lng", "accuracy",
+        # "speed", "heading", "captured_at"}.
+        #
+        # Antes de aceptar el punto se valida: que sea el conductor de la ruta,
+        # que tenga permiso de GPS, que el recorrido este activo y que las
+        # coordenadas sean coherentes. Luego se aplican filtros de calidad
+        # (ignorar lecturas muy imprecisas, descartar saltos imposibles y
+        # suavizar el temblor). Finalmente se persiste el estado de la ruta,
+        # opcionalmente se guarda el punto en la traza y se difunde
+        # "tracking:location" a la sala para que familias/admin vean la buseta.
         ruta = _resolve_route(data)
         if not ruta:
             return _emit_error("No se encontro la ruta para actualizar la ubicacion.")
@@ -181,6 +243,15 @@ def register_socket_events(socketio):
 
     @socketio.on("attendance:update")
     def handle_attendance_update(data):
+        # Emitido por el CONDUCTOR al marcar subida/bajada de un estudiante.
+        # Payload: {"ruta_id", "estudiante_id", "estado", "observacion"}.
+        # Solo el conductor de la ruta puede hacerlo y el estudiante debe
+        # pertenecer a esa ruta (validacion de pertenencia mas abajo).
+        #
+        # Se busca la asistencia de HOY para ese estudiante; si no existe se
+        # crea y si existe se actualiza. Segun el estado se sellan las horas de
+        # subida/bajada. El resultado se difunde a la sala como
+        # "tracking:attendance" para que las familias vean el cambio en vivo.
         ruta = _resolve_route(data)
         if not ruta:
             return _emit_error("No se encontro la ruta para actualizar la asistencia.")
@@ -221,6 +292,18 @@ def register_socket_events(socketio):
 
     @socketio.on("chat:message")
     def handle_chat_message(data):
+        # Emitido por CONDUCTOR o FAMILIA para enviar un mensaje al chat de la
+        # ruta. Payload: {"ruta_id", "contenido", "remitente_nombre",
+        # "remitente_tipo"}.
+        #
+        # El chat esta AISLADO POR RUTA: el mensaje solo se guarda y se emite a
+        # la sala de esa ruta (ruta.socket_room), nunca a las demas. Se aplican
+        # dos limites de ritmo: uno por IP general (rapido, todo remitente) y
+        # otro por IP especifico para familias (mas estricto).
+        #
+        # Segun el tipo de remitente hay reglas distintas:
+        #  - CONDUCTOR: debe estar autenticado y su nombre se toma del sistema.
+        #  - PADRE: solo si el conductor no cerro el chat de familias.
         if demasiadas_peticiones(f"chat:{cliente_ip()}", MAX_MENSAJES_CHAT, VENTANA_CHAT_SEGUNDOS):
             return _emit_error("Has enviado demasiados mensajes seguidos. Espera un momento.")
         ruta = _resolve_route(data)
@@ -234,6 +317,8 @@ def register_socket_events(socketio):
         if remitente_tipo is None:
             return _emit_error("El tipo de remitente no es valido.")
         if remitente_tipo == TipoRemitenteChat.CONDUCTOR:
+            # Se fuerza el nombre real del conductor para que nadie pueda
+            # suplantarlo enviando otro nombre en el payload.
             if not _require_route_driver(ruta):
                 return
             remitente_nombre = ruta.conductor.nombre_completo
@@ -262,8 +347,12 @@ def register_socket_events(socketio):
         )
         db.session.add(mensaje)
         _commit_changes()
+        # Difusion a la sala: todos los conectados a ESTA ruta reciben el
+        # mensaje nuevo (familias, conductor y admin viendo esa ruta).
         emit("chat:new_message", mensaje.to_socket_payload(), to=ruta.socket_room)
         if remitente_tipo == TipoRemitenteChat.PADRE:
+            # Aviso solo al emisor con cuantos mensajes le quedan en su cupo
+            # (no se envia a la sala para no exponer el cupo de otros).
             emit(
                 "chat:quota",
                 {
@@ -275,7 +364,10 @@ def register_socket_events(socketio):
 
     @socketio.on("chat:set_familias")
     def handle_chat_set_familias(data):
-        # El conductor abre o cierra el chat de familias de su propia ruta.
+        # El CONDUCTOR abre o cierra el chat de familias de su propia ruta.
+        # Payload: {"ruta_id", "habilitado": true/false}. Solo el conductor
+        # asignado puede cambiarlo. El nuevo estado se publica a la sala como
+        # "chat:state" para que las familias vean si el chat esta habilitado.
         data = data if isinstance(data, dict) else {}
         ruta = _resolve_route(data)
         if not ruta:
@@ -295,6 +387,14 @@ def register_socket_events(socketio):
 
 
 def _resolve_route(data):
+    """Resuelve la ruta del payload validando acceso por sesion o PIN.
+
+    Toma el `ruta_id` del payload, lo normaliza a entero y delega en
+    `route_for_session`, que comprueba si el usuario actual (conductor
+    autenticado o sesion con el PIN de la ruta) tiene permiso sobre ella.
+    Devuelve el objeto Ruta autorizado o None si no hay acceso o el id no es
+    valido. Es el filtro central de autorizacion para casi todos los eventos.
+    """
     if not isinstance(data, dict):
         return None
     ruta_id = data.get("ruta_id")
@@ -308,6 +408,13 @@ def _resolve_route(data):
 
 
 def _require_route_driver(ruta):
+    """Verifica que la sesion sea el conductor activo asignado a la ruta.
+
+    Devuelve True solo si el conductor de la sesion coincide con el de la ruta,
+    la ruta esta activa y el conductor esta activo. Si no, emite un error de
+    permisos y devuelve False. Protege los eventos sensibles (GPS, asistencia,
+    inicio/fin de recorrido y control del chat).
+    """
     # Solo el conductor autenticado y asignado puede emitir eventos sensibles
     # como GPS, cambios de asistencia o inicio/fin del recorrido.
     conductor_id = session.get("conductor_id")
@@ -323,6 +430,7 @@ def _require_route_driver(ruta):
 
 
 def _validate_coordinates(data):
+    """Extrae y valida lat/lng del payload; devuelve (None, None) si son invalidas."""
     latitud = _to_float(data.get("lat") if isinstance(data, dict) else None)
     longitud = _to_float(data.get("lng") if isinstance(data, dict) else None)
     if latitud is None or longitud is None:
@@ -333,6 +441,7 @@ def _validate_coordinates(data):
 
 
 def _to_float(value):
+    """Convierte a float de forma segura; devuelve None si no es numerico."""
     try:
         return float(value) if value is not None else None
     except (TypeError, ValueError):
@@ -340,6 +449,7 @@ def _to_float(value):
 
 
 def _normalize_positive_float(value):
+    """Normaliza magnitudes no negativas (precision, velocidad); None si es negativa."""
     number = _to_float(value)
     if number is None or number < 0:
         return None
@@ -347,6 +457,7 @@ def _normalize_positive_float(value):
 
 
 def _normalize_heading(value):
+    """Normaliza el rumbo al rango [0, 360) grados; None si falta o no es numerico."""
     heading = _to_float(value)
     if heading is None:
         return None
@@ -355,6 +466,7 @@ def _normalize_heading(value):
 
 
 def _parse_client_timestamp(value):
+    """Interpreta la marca de tiempo del cliente (segundos o milisegundos) a datetime UTC."""
     if value is None:
         return None
     try:
@@ -370,6 +482,11 @@ def _parse_client_timestamp(value):
 
 
 def _should_ignore_imprecise_fix(ruta, precision):
+    """Descarta lecturas GPS demasiado imprecisas (>120 m) cuando ya hay posicion previa.
+
+    Evita que una lectura de baja calidad desplace bruscamente la ubicacion
+    mostrada. La primera lectura siempre se acepta para tener una referencia.
+    """
     if precision is None:
         return False
     if ruta.latitud_actual is None or ruta.longitud_actual is None:
@@ -378,6 +495,14 @@ def _should_ignore_imprecise_fix(ruta, precision):
 
 
 def _smooth_location(ruta, latitud, longitud, precision):
+    """Suaviza la posicion mezclando la lectura nueva con la anterior.
+
+    Cuando el GPS reporta poca precision y el desplazamiento es pequeno, se
+    devuelve un punto intermedio (no el crudo) para que el marcador en el mapa
+    no "tiemble". El factor de mezcla sube cuanto mayor sea el error de
+    precision. Si el movimiento es grande o la precision es buena, se devuelve
+    la lectura original sin cambios.
+    """
     # Mezcla ligeramente la lectura nueva con la anterior cuando el GPS reporta
     # poca precision y el cambio es pequeno. Asi se reduce el "temblor" visual.
     if (
@@ -404,6 +529,13 @@ def _smooth_location(ruta, latitud, longitud, precision):
 
 
 def _is_implausible_jump(ruta, latitud, longitud, capturada_en, precision):
+    """Detecta y descarta saltos de ubicacion fisicamente imposibles.
+
+    Calcula la velocidad implicita entre la posicion nueva y la anterior. Si
+    supera un umbral absurdo para una buseta escolar (130 km/h) y la lectura
+    tiene mala precision, se considera un salto falso (ruido del GPS) y se
+    ignora. Si no hay posicion previa o el movimiento es pequeno, se acepta.
+    """
     # Descarta saltos imposibles para una buseta escolar: por ejemplo cambios de
     # cientos de metros en pocos segundos con mala precision.
     if (
@@ -430,6 +562,11 @@ def _is_implausible_jump(ruta, latitud, longitud, capturada_en, precision):
 
 
 def _haversine_meters(lat1, lng1, lat2, lng2):
+    """Distancia en metros entre dos coordenadas usando la formula de Haversine.
+
+    Devuelve None si alguna coordenada no es numerica. Se usa para medir
+    movimientos y compararlos con umbrales (saltos, suavizado, guardado).
+    """
     try:
         lat1_rad = math.radians(float(lat1))
         lng1_rad = math.radians(float(lng1))
@@ -469,6 +606,7 @@ def _should_store_location(ruta, latitud, longitud):
 
 
 def _parse_attendance_status(value):
+    """Convierte el texto recibido en un valor del enum EstadoAsistencia (o None)."""
     if value is None:
         return None
     normalized = str(value).strip().lower()
@@ -479,6 +617,7 @@ def _parse_attendance_status(value):
 
 
 def _parse_sender_type(value):
+    """Convierte el texto recibido en un valor del enum TipoRemitenteChat (o None)."""
     if value is None:
         return None
     normalized = str(value).strip().lower()
@@ -489,6 +628,7 @@ def _parse_sender_type(value):
 
 
 def _commit_changes():
+    """Hace commit de la sesion; si falla, revierte y propaga el error."""
     try:
         db.session.commit()
     except SQLAlchemyError:
@@ -497,9 +637,10 @@ def _commit_changes():
 
 
 def _emit_error(message, scope=None):
-    # `scope` permite al cliente distinguir si el aviso es del GPS del telefono
-    # ("gps") o de otra funcion (chat, asistencia, PIN, etc.). Asi el indicador
-    # de GPS no se marca como error por problemas que no son del GPS.
+    # Envia un aviso de error unicamente al cliente que lo provoco (emit sin
+    # `to=`). `scope` permite al cliente distinguir si el aviso es del GPS del
+    # telefono ("gps") o de otra funcion (chat, asistencia, PIN, etc.). Asi el
+    # indicador de GPS no se marca como error por problemas que no son del GPS.
     payload = {"message": message}
     if scope is not None:
         payload["scope"] = scope

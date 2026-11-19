@@ -16,9 +16,11 @@ from flask import current_app
 
 from app import db
 
+# Nombres de los elementos que se guardan dentro de cada archivo .zip.
 DB_EN_ZIP = "base_datos.db"
 UPLOADS_EN_ZIP = "uploads"
 MANIFIESTO = "manifiesto.json"
+# Motivo que identifica los respaldos creados por el programador automatico.
 MOTIVO_AUTOMATICO = "automatico"
 
 
@@ -30,10 +32,12 @@ def carpeta_respaldos():
 
 
 def _ruta_base_datos():
+    """Devuelve la ruta absoluta del archivo SQLite en uso."""
     return Path(db.engine.url.database).resolve()
 
 
 def _carpeta_uploads():
+    """Devuelve la ruta absoluta de la carpeta donde se guardan las fotos subidas."""
     return Path(current_app.config["UPLOAD_FOLDER"]).resolve()
 
 
@@ -65,6 +69,8 @@ def _formatear_tamano(bytes_total):
 
 def crear_respaldo(motivo="manual"):
     """Empaqueta la base de datos y las fotos en un archivo zip con marca de tiempo."""
+    # Se confirman y sueltan las transacciones pendientes para que el archivo
+    # SQLite en disco quede consistente antes de copiarlo al zip.
     db.session.commit()
     db.session.remove()
 
@@ -80,10 +86,13 @@ def crear_respaldo(motivo="manual"):
         "conteos": _conteos_actuales(),
     }
 
+    # El zip guarda tres cosas: la base de datos, las fotos subidas y el
+    # manifiesto JSON con la fecha y los conteos.
     with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as archivo_zip:
         if db_path.exists():
             archivo_zip.write(db_path, DB_EN_ZIP)
         if uploads_dir.exists():
+            # Se recorre toda la carpeta de fotos conservando su estructura interna.
             for archivo in sorted(uploads_dir.rglob("*")):
                 if archivo.is_file():
                     relativo = archivo.relative_to(uploads_dir).as_posix()
@@ -94,6 +103,7 @@ def crear_respaldo(motivo="manual"):
 
 
 def _leer_manifiesto(archivo):
+    """Lee el manifiesto.json de un zip; devuelve None si falta o esta corrupto."""
     try:
         with zipfile.ZipFile(archivo) as archivo_zip:
             if MANIFIESTO in archivo_zip.namelist():
@@ -129,6 +139,8 @@ def listar_respaldos():
 
 def ruta_respaldo(nombre):
     """Resuelve el archivo de respaldo validando que no se salga de la carpeta."""
+    # Se toma solo el nombre base y se comprueba que el resultado siga dentro de
+    # la carpeta de respaldos, para impedir rutas tipo "../" (path traversal).
     nombre_limpio = Path(nombre).name
     if not nombre_limpio.lower().endswith(".zip"):
         raise ValueError("El archivo indicado no es un respaldo valido.")
@@ -139,6 +151,7 @@ def ruta_respaldo(nombre):
 
 
 def eliminar_respaldo(nombre):
+    """Borra un respaldo existente y devuelve su nombre."""
     archivo = ruta_respaldo(nombre)
     archivo.unlink()
     return archivo.name
@@ -174,6 +187,8 @@ def restaurar_respaldo(nombre):
         if uploads_dir.exists():
             shutil.rmtree(uploads_dir, ignore_errors=True)
         uploads_dir.mkdir(parents=True, exist_ok=True)
+        # Se reescriben las fotos del respaldo, ignorando rutas peligrosas que
+        # intenten salir de la carpeta de subidas.
         for miembro in nombres:
             if not miembro.startswith(f"{UPLOADS_EN_ZIP}/") or miembro.endswith("/"):
                 continue

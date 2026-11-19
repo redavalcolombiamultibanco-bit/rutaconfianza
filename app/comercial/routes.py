@@ -1,4 +1,9 @@
-"""Rutas del modulo comercial."""
+"""Rutas del modulo comercial.
+
+Agrupa la parte publica del sitio: la landing de presentacion, el directorio
+de conductores, las paginas SEO de rutas por ciudad y los formularios de
+registro de conductor y de contacto.
+"""
 from datetime import datetime
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
@@ -11,8 +16,10 @@ from app.services.rate_limit import (
     demasiadas_peticiones,
 )
 
+# Sin prefijo de URL: expone la landing y las paginas publicas en la raiz del sitio.
 comercial_bp = Blueprint("comercial_bp", __name__)
 
+# Nombres de meses en minuscula para formatear la fecha de actualizacion.
 MESES_EN_ESPANOL = (
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
@@ -29,13 +36,21 @@ MUNICIPIOS_CASANARE = (
 )
 
 
+# GET de la pagina principal. Muestra la landing con conductores destacados e
+# indicadores del sistema. Salida: render_template. Acceso publico.
 @comercial_bp.route("/")
 def home():
+    """Pagina principal: muestra la landing con servicios, beneficios y conductores destacados.
+
+    Se calculan indicadores generales del sistema para mostrarlos en la
+    seccion de estadisticas de la landing.
+    """
     conductores = (
         Conductor.query.filter_by(visible_en_directorio=True, activo=True)
         .order_by(Conductor.created_at.desc())
         .all()
     )
+    # Indicadores agregados que se muestran en la seccion de estadisticas.
     indicadores = {
         "conductores": Conductor.query.filter_by(activo=True).count(),
         "suscripciones_activas": Conductor.query.filter_by(estado_suscripcion=EstadoSuscripcion.ACTIVA).count(),
@@ -48,8 +63,11 @@ def home():
     )
 
 
+# GET del directorio publico: lista los conductores visibles y activos,
+# ordenados por nombre. Salida: render_template. Acceso publico.
 @comercial_bp.route("/directorio")
 def directorio():
+    """Listado publico de conductores visibles en el directorio."""
     conductores = (
         Conductor.query.filter_by(visible_en_directorio=True, activo=True)
         .order_by(Conductor.nombres.asc())
@@ -58,6 +76,8 @@ def directorio():
     return render_template("comercial/directorio.html", conductores=conductores)
 
 
+# GET de terminos y condiciones. Calcula la fecha de "ultima actualizacion"
+# en espanol. Salida: render_template. Acceso publico.
 @comercial_bp.route("/terminos")
 def terminos():
     """Publica los terminos y condiciones y la politica de tratamiento de datos."""
@@ -66,12 +86,16 @@ def terminos():
     return render_template("comercial/terminos.html", fecha_actualizacion=fecha_actualizacion)
 
 
+# GET de la pagina SEO "ruta escolar en Yopal" (contenido para busquedas
+# locales). Salida: render_template. Acceso publico.
 @comercial_bp.route("/rutas-escolares-yopal")
 def rutas_escolares_yopal():
     """Pagina dedicada al servicio de ruta escolar en Yopal (SEO local)."""
     return render_template("comercial/rutas_escolares_yopal.html")
 
 
+# GET de la pagina SEO de cobertura en Casanare; entrega el listado de
+# municipios. Salida: render_template. Acceso publico.
 @comercial_bp.route("/rutas-escolares-casanare")
 def rutas_escolares_casanare():
     """Pagina de cobertura del servicio de ruta escolar en Casanare (SEO local)."""
@@ -81,8 +105,16 @@ def rutas_escolares_casanare():
     )
 
 
+# POST del formulario de registro de conductor desde la landing.
+# Entrada: form con datos del conductor, del vehiculo y aceptacion de terminos.
+# Salida: redirect a la landing con mensaje. Acceso publico, con rate limit.
 @comercial_bp.route("/registro-conductor", methods=["POST"])
 def registro_conductor():
+    """Recibe la solicitud de registro de un conductor desde la landing.
+
+    Se valida que acepte los terminos y se limita el numero de envios por IP
+    para evitar spam. La solicitud queda pendiente de revision administrativa.
+    """
     if demasiadas_peticiones(
         f"registro-conductor:{cliente_ip()}", MAX_ENVIOS_FORMULARIO, VENTANA_FORMULARIO_SEGUNDOS
     ):
@@ -92,6 +124,7 @@ def registro_conductor():
         flash("Debes aceptar los términos y condiciones y la política de tratamiento de datos.", "warning")
         return redirect(url_for("comercial_bp.home") + "#contacto")
 
+    # Se crea la solicitud pendiente; un administrador la revisa despues.
     solicitud = SolicitudConductor(
         nombres=request.form.get("nombres", "").strip(),
         apellidos=request.form.get("apellidos", "").strip(),
@@ -109,6 +142,10 @@ def registro_conductor():
     return redirect(url_for("comercial_bp.home"))
 
 
+# POST del formulario de contacto de la landing.
+# Entrada: form con nombre, mensaje y al menos un dato de contacto (email/telefono),
+# ademas de la aceptacion de terminos. Salida: redirect a la landing con mensaje.
+# Acceso publico, con rate limit para evitar spam.
 @comercial_bp.route("/contacto", methods=["POST"])
 def contacto():
     """Recibe las consultas del formulario de contacto de la landing."""

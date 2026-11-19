@@ -2,7 +2,10 @@
    Guarda en cache unicamente los archivos estaticos para que la app abra
    rapido desde el celular. Las rutas dinamicas y el canal en vivo de
    Socket.IO siempre van directo a la red para no mostrar datos viejos. */
+// Nombre versionado del cache: al cambiarlo, el evento activate borra el cache
+// anterior y fuerza a descargar de nuevo la version mas reciente.
 const CACHE_NAME = "ruta-confianza-v2";
+// Archivos minimos para que la app pueda abrir sin internet.
 const PRECACHE_URLS = [
   "/static/css/app.css",
   "/static/js/app.js",
@@ -10,6 +13,8 @@ const PRECACHE_URLS = [
   "/static/images/icon-512.png",
 ];
 
+// INSTALL: guarda en cache los archivos base y activa el nuevo service worker
+// sin esperar a que se cierren las pestanas abiertas (skipWaiting).
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
@@ -20,6 +25,8 @@ self.addEventListener("install", (event) => {
   );
 });
 
+// ACTIVATE: borra los caches de versiones anteriores y toma el control de las
+// pestanas ya abiertas (clients.claim).
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -31,6 +38,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// FETCH: intercepta las peticiones de la app. Solo se cachean los GET del mismo
+// origen que empiezan por /static/; el resto (socket.io, api y otros origenes)
+// va directo a la red para no servir datos desactualizados.
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") {

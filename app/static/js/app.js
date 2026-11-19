@@ -1,10 +1,18 @@
 (function () {
     // Script principal del frontend. Centraliza mapas, GPS en vivo, chat,
     // asistencia, PWA y ayudas compartidas entre portales.
+
+    // --- Infraestructura de red y constantes ---
+    // Una sola conexion Socket.IO reutilizada por todas las vistas. Si el
+    // servidor no expone `io`, la app sigue operando sin eventos en vivo.
     const socket = window.io ? window.io() : null;
+    // Endpoints publicos de OSRM (motor de ruteo). `route` calcula la ruta por
+    // calles, `trip` optimiza el orden de paradas y `match` ajusta la traza
+    // real del bus a las vias.
     const OSRM_ROUTE_URL = "https://router.project-osrm.org/route/v1/driving/";
     const OSRM_TRIP_URL = "https://router.project-osrm.org/trip/v1/driving/";
     const OSRM_MATCH_URL = "https://router.project-osrm.org/match/v1/driving/";
+    // Limites de zoom por capa base y umbrales que filtran el GPS.
     const STREETS_MAX_ZOOM = 19;
     const SATELLITE_NATIVE_MAX_ZOOM = 17;
     const SATELLITE_MAX_ZOOM = 20;
@@ -26,6 +34,9 @@
         lastVoiceAt: 0,
     };
 
+    // --- Utilidades de interfaz compartidas ---
+    // Formatea una fecha a hora local (hh:mm:ss) para las etiquetas de ultima
+    // actualizacion. Si el valor no es valido devuelve "Sin datos".
     function formatTimestamp(value) {
         if (!value) {
             return "Sin datos";
@@ -37,6 +48,8 @@
         return date.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     }
 
+    // Escribe texto en un elemento por id solo si existe; asi las vistas que no
+    // incluyen ese nodo no lanzan error.
     function setTextContent(elementId, value) {
         const node = document.getElementById(elementId);
         if (node) {
@@ -44,14 +57,18 @@
         }
     }
 
+    // Aviso principal mostrado al conductor (banda superior del panel).
     function setDriverNotice(message) {
         setTextContent("driverNotice", message);
     }
 
+    // Estado del sintetizador de voz usado en la navegacion.
     function setVoiceStatus(label) {
         setTextContent("driverVoiceStatus", label);
     }
 
+    // Aplica al indicador de GPS una clase de estado (is-ready, is-active,
+    // is-warning, is-error) y el texto visible, sin tocar la logica de GPS.
     function setGpsStatus(status, label) {
         const node = document.getElementById("driverGpsStatus");
         if (node) {
@@ -61,10 +78,14 @@
         setTextContent("driverGpsStatusText", label);
     }
 
+    // El GPS del navegador solo opera en contexto seguro (HTTPS o localhost).
     function isSecureLocationContext() {
         return window.isSecureContext || ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
     }
 
+    // --- Chat de familias ---
+    // Vacia el contenedor de mensajes y deja un texto de "sin mensajes". El
+    // estilo del marcador cambia segun sea la caja de la sala o una lista.
     function clearChatFeed(containerId) {
         const container = document.getElementById(containerId);
         if (!container) {
@@ -78,6 +99,8 @@
         container.appendChild(placeholder);
     }
 
+    // Agrega un mensaje al final del feed: muestra la inicial del autor como
+    // avatar, su nombre y el cuerpo del texto, y hace scroll al final.
     function appendChatMessage(container, author, content) {
         if (!container) {
             return;
@@ -101,6 +124,10 @@
         container.scrollTop = container.scrollHeight;
     }
 
+    // --- Asistencia en vivo ---
+    // Crea (o actualiza) la fila de un estudiante en la lista de asistencia con
+    // el estado que llega por el evento de socket `tracking:attendance`. Los
+    // estudiantes nuevos se insertan arriba para que el cambio se note.
     function updateAttendanceFeed(payload) {
         const feed = document.getElementById("attendanceFeed");
         if (!feed) {
@@ -135,6 +162,9 @@
         }
     }
 
+    // --- Estado del recorrido ---
+    // Refleja si la ruta esta activa en varios nodos a la vez (etiqueta grande,
+    // estados del hero y badge). Recibe el payload de `tracking:route_status`.
     function updateRouteStatus(payload) {
         const active = Boolean(payload.recorrido_activo);
         appState.driverRouteActive = active;
@@ -156,6 +186,8 @@
         }
     }
 
+    // --- Utilidades geograficas ---
+    // Convierte metros a texto legible ("850 m" o "1.2 km").
     function formatDistance(value) {
         const meters = Number(value);
         if (!Number.isFinite(meters)) {
@@ -167,6 +199,8 @@
         return `${Math.round(meters)} m`;
     }
 
+    // Distancia en metros entre dos puntos [lat, lng] usando la formula de
+    // Haversine. Devuelve null si falta algun punto.
     function haversineMeters(origin, target) {
         if (!origin || !target) {
             return null;
@@ -181,6 +215,9 @@
         return 6371000 * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
+    // --- Navegacion por voz ---
+    // Traduce un paso de OSRM (tipo de maniobra + calle + distancia) a una
+    // frase entendible para el conductor.
     function buildInstructionText(step) {
         if (!step || !step.maneuver) {
             return null;
@@ -206,6 +243,8 @@
         return `${base}${street}${distanceSuffix}`.trim();
     }
 
+    // Elige el paso mas util de una lista de instrucciones, evitando el inicio
+    // ("depart") y la llegada ("arrive") que no aportan indicaciones.
     function pickPrimaryStep(steps) {
         if (!Array.isArray(steps) || !steps.length) {
             return null;
@@ -216,6 +255,8 @@
         return preferred || steps[0];
     }
 
+    // Lee un mensaje en voz alta con la API de sintesis del navegador. Evita
+    // repetir el mismo aviso en menos de 18 segundos para no saturar al usuario.
     function speakNavigation(message) {
         if (!message || !window.speechSynthesis) {
             setVoiceStatus("No disponible");
@@ -236,6 +277,8 @@
         setVoiceStatus("Activa");
     }
 
+    // Rellena los campos de coordenadas y hora de ultima actualizacion que
+    // reciben el id de cada nodo, reutilizado por varios portales.
     function updateLocationFields(payload, coordinatesId, timeId) {
         const lat = parseFloat(payload.latitud);
         const lng = parseFloat(payload.longitud);
@@ -245,9 +288,12 @@
         setTextContent(timeId, formatTimestamp(payload.ultima_ubicacion_en));
     }
 
+    // --- Mapa base, capas y marcador del bus ---
+    // Fabrica comun para los tres mapas de la app (conductor, familias y
+    // administracion): crea la instancia Leaflet, las capas base de calles y
+    // satelite, el marcador del bus, las polilineas de ruta y devuelve un
+    // `mapContext` con todo el estado que comparten las vistas.
     function createMap(node) {
-        // Fabrica comun para los tres mapas de la app: conductor, familias y
-        // administracion. Devuelve un contexto con capas y banderas compartidas.
         if (!node || !window.L) {
             return null;
         }
@@ -261,6 +307,9 @@
             maxZoom: STREETS_MAX_ZOOM
         }).setView([lat, lng], zoom);
 
+        // Capas base intercambiables: calles (Esri) y satelite (imagenes mas
+        // etiquetas de lugares). El control de capas las alterna y ajusta el
+        // zoom maximo segun la que este activa.
         const streetsLayer = L.tileLayer(
             "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
             {
@@ -312,11 +361,14 @@
             iconAnchor: [24, 24]
         });
 
+        // Marcador del bus; su opacidad sera 0 hasta que exista una ubicacion.
         const marker = L.marker([lat, lng], {
             icon: vehicleIcon,
             zIndexOffset: 1000,
             riseOnHover: true,
         }).addTo(map);
+        // Rastro real del bus: un contorno blanco debajo y la linea azul encima
+        // para que resalte sobre cualquier fondo, incluso el satelite.
         const routeOutline = L.polyline([], {
             color: "#ffffff",
             weight: 8,
@@ -336,6 +388,8 @@
         if (!hasLocation) {
             marker.setOpacity(0);
         }
+        // Contexto compartido del mapa: guarda capas, marcadores y banderas de
+        // estado (seguimiento, traza cruda, optimizacion, parada fijada...).
         const mapContext = {
             map: map,
             isDriverMap: isDriverMap,
@@ -393,6 +447,7 @@
             }
         }
 
+        // Centra el mapa sobre el bus y reactiva el seguimiento automatico.
         function focusVehicleLocation() {
             if (!mapContext.hasLocation) {
                 return;
@@ -424,6 +479,8 @@
             mapContext.centerButton.addEventListener("click", focusVehicleLocation);
         }
 
+        // Control propio de Leaflet: boton con icono de mira para centrar el
+        // mapa sobre el bus, util cuando el usuario arrastro el mapa.
         const InlineCenterControl = L.Control.extend({
             options: { position: "topleft" },
             onAdd: function () {
@@ -457,6 +514,10 @@
         return mapContext;
     }
 
+    // --- Marcadores de paradas y destino ---
+    // Icono de casita para cada parada. Cambia de estilo si ya fue visitada
+    // (completed) o si es la parada fijada manualmente (selected), y muestra
+    // el numero de orden.
     function createHouseIcon(index, completed, selected) {
         const label = Number.isFinite(index) ? `<span class="house-marker-order">${index}</span>` : "";
         return L.divIcon({
@@ -467,6 +528,7 @@
         });
     }
 
+    // Icono de bandera que marca el destino final del recorrido.
     function createDestinationIcon() {
         return L.divIcon({
             className: "destination-marker",
@@ -476,6 +538,9 @@
         });
     }
 
+    // --- Trazado de rutas (rastro real y ruta sugerida) ---
+    // Vuelve a subir las capas de ruta al frente y las reengancha al mapa si se
+    // habian desprendido, para que el trazado nunca quede invisible.
     function raiseRouteLayers(mapContext) {
         // Orden fijo de capas: rastro real debajo y ruta sugerida siempre visible encima.
         if (!mapContext || !mapContext.map) {
@@ -509,6 +574,8 @@
         }
     }
 
+    // Dibuja la ruta sugerida (dos polilineas superpuestas) y, si se pide,
+    // encuadra el mapa para mostrarla completa.
     function setPlannedRoute(mapContext, coordinates, options) {
         if (!mapContext) {
             return;
@@ -526,6 +593,9 @@
         }
     }
 
+    // --- Orden y estado de las paradas ---
+    // Devuelve las paradas ordenadas: primero por el orden optimizado por OSRM
+    // (si existe) y, si no, por su campo `orden` y luego por nombre.
     function getOrderedStops(mapContext) {
         if (!mapContext || !Array.isArray(mapContext.stops)) {
             return [];
@@ -552,6 +622,8 @@
         });
     }
 
+    // Reinicia el progreso de todas las paradas (ninguna completada) y limpia
+    // los avisos de llegada ya emitidos. Se usa al iniciar o reiniciar ruta.
     function resetStopProgress(mapContext) {
         if (!mapContext || !Array.isArray(mapContext.stops)) {
             return;
@@ -564,6 +636,8 @@
         });
     }
 
+    // Guarda el orden de paradas devuelto por OSRM Trip, actualiza los iconos
+    // con su nuevo indice y refresca el HUD del conductor.
     function applyOptimizedStopOrder(mapContext, orderedStops, origin, usedLiveLocation) {
         if (!mapContext) {
             return;
@@ -580,6 +654,8 @@
         renderDriverHud(mapContext);
     }
 
+    // Devuelve la parada fijada manualmente por el conductor, o null. Si ya no
+    // existe en la lista, limpia la seleccion.
     function getSelectedStop(mapContext) {
         if (!mapContext || !Array.isArray(mapContext.stops) || !mapContext.selectedStopId) {
             return null;
@@ -593,6 +669,8 @@
         return selectedStop;
     }
 
+    // Paradas objetivo de la navegacion: solo la fijada manualmente o, si no
+    // hay ninguna, todas las que aun faltan por visitar.
     function getRouteTargetStops(mapContext) {
         const selectedStop = getSelectedStop(mapContext);
         if (selectedStop) {
@@ -697,6 +775,9 @@
         applyOptimizedStopOrder(mapContext, mapContext.stops, getCurrentOrigin(mapContext), false);
     }
 
+    // --- Traza real: normalizacion, filtrado y ajuste a vias ---
+    // Reemplaza la traza cruda completa por la lista de puntos recibida y
+    // repinta el recorrido guardado.
     function setRouteHistory(mapContext, points) {
         if (!mapContext || !Array.isArray(points)) {
             return;
@@ -708,6 +789,8 @@
         refreshRecordedTrace(mapContext, true);
     }
 
+    // Normaliza un punto crudo del backend al formato interno {lat, lng,
+    // accuracy, timestamp}. Devuelve null si faltan coordenadas validas.
     function normalizeTracePoint(point) {
         if (!point) {
             return null;
@@ -728,6 +811,7 @@
         };
     }
 
+    // Agrega un punto a la traza cruda evitando duplicados consecutivos.
     function appendRawRoutePoint(mapContext, point) {
         if (!mapContext || !point) {
             return;
@@ -741,12 +825,15 @@
         mapContext.rawRoutePoints.push(point);
     }
 
+    // Convierte la lista de puntos en coordenadas [lat, lng] para Leaflet.
     function buildRawRouteCoordinates(points) {
         return (points || []).map(function (point) {
             return [point.lat, point.lng];
         });
     }
 
+    // Pinta (o repinta) el rastro real con las coordenadas dadas y, si se
+    // pide, encuadra el mapa sobre el recorrido.
     function drawRecordedTrace(mapContext, coordinates, shouldFitBounds) {
         if (!mapContext) {
             return;
@@ -759,6 +846,8 @@
         }
     }
 
+    // Reduce la cantidad de puntos a `limit` tomando muestras uniformes; asi la
+    // peticion a OSRM no crece de mas y la forma de la traza se conserva.
     function simplifyTracePoints(points, limit) {
         if (!Array.isArray(points) || points.length <= limit) {
             return Array.isArray(points) ? points.slice() : [];
@@ -781,6 +870,8 @@
         return simplified;
     }
 
+    // Descarta puntos sin precision y micro-movimientos (< 5 m) para limpiar el
+    // ruido tipico del GPS antes de dibujar o ajustar la traza.
     function filterTracePoints(points) {
         if (!Array.isArray(points)) {
             return [];
@@ -802,6 +893,8 @@
         return filtered;
     }
 
+    // Huella (firma) de la traza: sirve para no repetir el ajuste con OSRM si
+    // los puntos relevantes no cambiaron desde la ultima vez.
     function buildTraceSignature(points) {
         if (!Array.isArray(points) || !points.length) {
             return "empty";
@@ -848,6 +941,8 @@
         return url;
     }
 
+    // Extrae de la respuesta de OSRM Match las coordenadas ya ajustadas a las
+    // vias, quitando duplicados consecutivos.
     function extractMatchedCoordinates(payload) {
         if (!payload || !Array.isArray(payload.matchings)) {
             return [];
@@ -924,6 +1019,7 @@
             });
     }
 
+    // --- Carga de datos del recorrido desde el backend ---
     function loadRouteHistory(mapContext, rutaId, onError) {
         // Recupera el recorrido ya guardado para que el mapa no arranque vacio
         // cuando alguien entra a mitad de la jornada.
@@ -990,6 +1086,9 @@
             });
     }
 
+    // --- Ubicacion manual de las casitas ---
+    // Envia al backend (POST) la posicion donde el conductor solto la casita de
+    // un estudiante, usando el token CSRF del meta tag, y recarga el plan.
     function saveHouseLocation(estudianteId, lat, lng) {
         const mapContext = appState.driverMapContext;
         if (!mapContext || !estudianteId) {
@@ -1036,6 +1135,8 @@
             });
     }
 
+    // Quita del desplegable al estudiante ya ubicado y deja un mensaje de guia
+    // sobre el siguiente estudiante pendiente.
     function markHouseAsPlaced(estudianteId) {
         const select = document.getElementById("housePlacementSelect");
         const hint = document.getElementById("housePlacementHint");
@@ -1057,6 +1158,7 @@
         }
     }
 
+    // --- Origen actual y siguientes paradas ---
     function getCurrentOrigin(mapContext) {
         // La prioridad es: GPS actual del bus, origen configurado en backend y,
         // como ultimo recurso, el marcador ya visible en el mapa.
@@ -1082,12 +1184,14 @@
         return null;
     }
 
+    // Devuelve solo las paradas que aun no fueron visitadas.
     function getRemainingStops(mapContext) {
         return getOrderedStops(mapContext).filter(function (stop) {
             return !stop.completada;
         });
     }
 
+    // Refresca el icono de una parada (numero de orden, completada, seleccionada).
     function updateStopMarkerState(stop, index) {
         if (!stop || !stop.marker) {
             return;
@@ -1147,6 +1251,7 @@
         renderDriverHud(mapContext);
     }
 
+    // --- Navegacion y optimizacion de paradas (OSRM) ---
     function getNavigationWaypoints(mapContext) {
         // Construye la secuencia que se manda a OSRM: origen, paradas activas o
         // parada fijada manualmente y, si aplica, destino final.
@@ -1167,6 +1272,8 @@
         return coordinates.filter(Boolean);
     }
 
+    // Firma del escenario de optimizacion (origen + paradas + destino) para no
+    // volver a pedir el mismo orden a OSRM si nada cambio.
     function buildOptimizationSignature(mapContext, origin) {
         const originSignature = Array.isArray(origin)
             ? `${origin[0].toFixed(3)},${origin[1].toFixed(3)}`
@@ -1205,6 +1312,8 @@
         return `${OSRM_TRIP_URL}${coordinates}?${params.join("&")}`;
     }
 
+    // Reordena las paradas segun el `waypoint_index` que devolvio OSRM Trip,
+    // excluyendo el origen y (si aplica) el destino.
     function extractTripStopOrder(payload, stops, hasDestination) {
         if (!payload || !Array.isArray(payload.waypoints)) {
             return stops.slice();
@@ -1265,6 +1374,9 @@
             });
     }
 
+    // Recalcula todo el trazado sugerido: filtra paradas ya visitadas, optimiza
+    // el orden (OSRM Trip) y pide la ruta por calles (OSRM Route). Si OSRM falla,
+    // mantiene una ruta directa como respaldo para no dejar el mapa sin linea.
     function refreshPlannedRoute(mapContext) {
         if (!mapContext || !mapContext.planData) {
             return;
@@ -1352,6 +1464,7 @@
         });
     }
 
+    // --- Actualizacion del mapa con el GPS ---
     function shouldRenderGpsPoint(mapContext, payload) {
         // Filtra lecturas demasiado imprecisas para evitar saltos bruscos en la
         // interfaz cuando el GPS pierde calidad temporalmente.
@@ -1430,6 +1543,9 @@
         refreshPlannedRoute(mapContext);
     }
 
+    // --- Salas de socket y paginas de seguimiento ---
+    // Se une a la sala de Socket.IO de una ruta y guarda la sala activa en
+    // `appState` para reingresar automaticamente si se reconecta la red.
     function joinRouteRoom(rutaId) {
         if (!socket || !rutaId) {
             return;
@@ -1510,6 +1626,9 @@
         }, 8000);
     }
 
+    // --- Panel de administracion de la ruta ---
+    // Lee un bloque de datos JSON embebido en el HTML y lo convierte en objeto.
+    // Devuelve null si el nodo no existe o el contenido no es JSON valido.
     function readJsonScript(elementId) {
         const node = document.getElementById(elementId);
         if (!node) {
@@ -1523,6 +1642,7 @@
         }
     }
 
+    // Actualiza las etiquetas de hora y coordenadas del panel admin.
     function updateAdminRouteMeta(payload) {
         if (!payload) {
             return;
@@ -1536,6 +1656,7 @@
         );
     }
 
+    // Muestra si la ruta esta en recorrido o en espera con el estilo del pill.
     function updateAdminRouteStatus(payload) {
         const node = document.getElementById("adminRouteState");
         if (!node || !payload) {
@@ -1547,6 +1668,8 @@
         node.classList.toggle("status-pill--off", !activa);
     }
 
+    // Recarga el plan de la ruta (paradas y destino) en el panel admin desde la
+    // API de seguimiento.
     function loadAdminRoutePlan(mapContext, rutaId) {
         fetch(`/admin/api/ruta/${rutaId}/seguimiento`)
             .then(function (response) {
@@ -1658,6 +1781,9 @@
         });
     }
 
+    // --- Utilidades de formularios y PWA ---
+    // Alterna la visibilidad del campo de contrasena asociado a cada boton que
+    // lleve el atributo data-password-toggle (ojito mostrar/ocultar).
     function setupPasswordToggles() {
         document.querySelectorAll("[data-password-toggle]").forEach(function (button) {
             const input = document.getElementById(button.getAttribute("data-password-toggle"));
@@ -1773,10 +1899,13 @@
         }
     }
 
+    // --- Chat de familias: estado y formulario de la sala ---
     // Estado del chat de familias: el servidor puede cerrarlo (el conductor) o
     // agotar el cupo de mensajes por IP. Se refleja en el formulario de la sala.
     const chatFamilias = { cupoAgotado: false, cerrado: false, avisoBloqueo: "", avisoRestantes: "" };
 
+    // Devuelve el formulario de chat solo si existe y pertenece al remitente
+    // "padre" (las reglas de cupo y cierre aplican solo a las familias).
     function formularioChatPadres() {
         const form = document.getElementById("chatForm");
         if (!form || (form.dataset.remitenteTipo || "padre") !== "padre") {
@@ -1785,6 +1914,8 @@
         return form;
     }
 
+    // Muestra u oculta el aviso del chat (limite alcanzado o cierre) con el
+    // texto indicado.
     function escribirAvisoChat(texto) {
         const hint = document.getElementById("chatLimitHint");
         if (!hint) {
@@ -1794,6 +1925,8 @@
         hint.classList.toggle("d-none", !texto);
     }
 
+    // Calcula el texto de aviso segun el estado del chat (cerrado, sin cupo o
+    // mensajes restantes).
     function textoAvisoChat() {
         if (chatFamilias.cerrado) {
             return chatFamilias.avisoBloqueo || "El conductor cerró el chat de familias.";
@@ -1804,6 +1937,8 @@
         return chatFamilias.avisoRestantes;
     }
 
+    // Habilita o deshabilita los campos del formulario de familias y refresca
+    // el aviso, segun el estado actual del chat.
     function refrescarFormularioChat() {
         const form = formularioChatPadres();
         const bloqueado = chatFamilias.cupoAgotado || chatFamilias.cerrado;
@@ -1815,6 +1950,8 @@
         escribirAvisoChat(textoAvisoChat());
     }
 
+    // Actualiza el boton que el conductor usa para abrir o cerrar el chat de
+    // familias (icono, etiqueta y estado en data-habilitado).
     function actualizarBotonChat(habilitado) {
         const boton = document.getElementById("chatToggleBtn");
         if (!boton) {
@@ -1831,6 +1968,8 @@
         }
     }
 
+    // Conecta el formulario de chat con el socket: escucha cupo y estado,
+    // permite al conductor abrir/cerrar el chat y emite `chat:message`.
     function setupChatForm() {
         const form = document.getElementById("chatForm");
         if (!form || !socket) {
@@ -1909,6 +2048,7 @@
         });
     }
 
+    // --- GPS del conductor: wake lock, watchPosition y envio ---
     async function requestWakeLock() {
         // Evita que el telefono apague la pantalla y pause el GPS mientras el
         // conductor esta transmitiendo el recorrido.
@@ -1922,6 +2062,7 @@
         }
     }
 
+    // Libera el bloqueo de pantalla (wake lock) cuando ya no se transmite.
     function releaseWakeLock() {
         if (appState.wakeLock && typeof appState.wakeLock.release === "function") {
             appState.wakeLock.release();
@@ -1929,6 +2070,7 @@
         appState.wakeLock = null;
     }
 
+    // Detiene la vigilancia del GPS y libera el wake lock.
     function stopLocationWatch() {
         if (appState.driverWatchId !== null && navigator.geolocation) {
             navigator.geolocation.clearWatch(appState.driverWatchId);
@@ -1937,6 +2079,8 @@
         releaseWakeLock();
     }
 
+    // Traduce los codigos de error de geolocalizacion a mensajes en espanol para
+    // el conductor (permiso denegado, no disponible, tiempo de espera).
     function locationErrorMessage(error) {
         if (!error) {
             return "No fue posible leer la ubicación. Inténtalo de nuevo.";
@@ -1953,6 +2097,8 @@
         return "No fue posible leer la ubicación. Inténtalo de nuevo.";
     }
 
+    // Reinicia la ubicacion y el trazado del mapa al iniciar una nueva ruta:
+    // limpia marcador, lineas, progreso de paradas y banderas de calculo.
     function resetMapLocation(mapContext) {
         if (!mapContext) {
             return;
@@ -1991,11 +2137,56 @@
         refreshPlannedRoute(mapContext);
     }
 
+    // Detecta lecturas GPS antiguas (mas de 2 minutos) que no deben enviarse.
     function isStaleGpsPosition(position) {
         if (!position || typeof position.timestamp !== "number") {
             return false;
         }
         return (Date.now() - position.timestamp) > 120000;
+    }
+
+    // Lee la marca de tiempo de una ubicacion del payload (ISO) en milisegundos;
+    // devuelve null si falta o no es valida.
+    function payloadTimestamp(payload) {
+        if (!payload || !payload.ultima_ubicacion_en) {
+            return null;
+        }
+        const parsed = Date.parse(payload.ultima_ubicacion_en);
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    // Muestra en el mapa del conductor la velocidad actual en km/h.
+    // El GPS entrega la velocidad en metros por segundo (`velocidad`), pero
+    // muchos telefonos no la reportan (null); en ese caso se estima con la
+    // distancia y el tiempo transcurridos entre dos lecturas consecutivas.
+    function updateDriverSpeed(mapContext, payload) {
+        if (!mapContext || !payload) {
+            return;
+        }
+        const lat = parseFloat(payload.latitud);
+        const lng = parseFloat(payload.longitud);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            return;
+        }
+        const sample = { latlng: [lat, lng], at: payloadTimestamp(payload) };
+        const reported = Number(payload.velocidad);
+        let speedKmh = null;
+        if (Number.isFinite(reported) && reported >= 0) {
+            // 1 m/s = 3.6 km/h.
+            speedKmh = reported * 3.6;
+        } else if (mapContext.speedSample) {
+            const previous = mapContext.speedSample;
+            if (sample.at !== null && previous.at !== null && sample.at > previous.at) {
+                const meters = haversineMeters(previous.latlng, sample.latlng);
+                const seconds = (sample.at - previous.at) / 1000;
+                // Se ignoran intervalos fuera de rango (> 60 s) por ser poco fiables.
+                if (meters !== null && seconds > 0 && seconds <= 60) {
+                    speedKmh = (meters / seconds) * 3.6;
+                }
+            }
+        }
+        mapContext.speedSample = sample;
+        setTextContent("driverSpeedValue", speedKmh === null ? "--" : String(Math.round(speedKmh)));
     }
 
     function emitDriverLocationUpdate(rutaId, position) {
@@ -2078,6 +2269,7 @@
         );
     }
 
+    // --- Ubicacion manual de casitas y HUD del conductor ---
     function setupHousePlacementControls(mapContext) {
         // Permite ubicar o corregir manualmente las casas desde el mapa del
         // conductor y recalcular la ruta en cuanto se guarda una posicion.
@@ -2218,6 +2410,9 @@
         setTextContent("driverHudNextMeta", metaParts.join(" · ") || "--");
     }
 
+    // --- Pantalla completa del mapa del conductor ---
+    // Pide pantalla completa al navegador, contemplando los prefijos webkit/ms y
+    // sin romper la app si la API no esta disponible.
     function requestMapFullscreen(element) {
         const request = element.requestFullscreen || element.webkitRequestFullscreen || element.msRequestFullscreen;
         if (!request) {
@@ -2233,6 +2428,7 @@
         }
     }
 
+    // Sale del modo pantalla completa si esta activo.
     function exitMapFullscreen() {
         if (!document.fullscreenElement && !document.webkitFullscreenElement) {
             return;
@@ -2315,6 +2511,7 @@
         });
     }
 
+    // --- Portal del conductor: controles y eventos ---
     function setupDriverControls() {
         // Reune toda la logica exclusiva del portal del conductor.
         const driverPanel = document.getElementById("driverPanel");
@@ -2357,6 +2554,8 @@
         document.querySelectorAll(".js-route-finish").forEach(function (button) {
             button.addEventListener("click", function () {
                 stopLocationWatch();
+                mapContext.speedSample = null;
+                setTextContent("driverSpeedValue", "--");
                 socket.emit("route:finish", { ruta_id: parseInt(button.dataset.rutaId, 10) });
                 setGpsStatus("ready", "GPS detenido");
                 setDriverNotice("Ruta finalizada. La transmisión de ubicación fue detenida.");
@@ -2378,6 +2577,7 @@
                 return;
             }
             updateMapLocation(mapContext, payload);
+            updateDriverSpeed(mapContext, payload);
             updateLocationFields(payload, "driverCoordinates", "driverLastUpdate");
         });
 
@@ -2388,6 +2588,8 @@
             updateRouteStatus(payload);
             if (payload.location_reset) {
                 resetMapLocation(mapContext);
+                mapContext.speedSample = null;
+                setTextContent("driverSpeedValue", "--");
                 updateLocationFields({ latitud: null, longitud: null, ultima_ubicacion_en: null }, "driverCoordinates", "driverLastUpdate");
             }
             if (payload.recorrido_activo) {
@@ -2395,6 +2597,8 @@
                 startDriverTracking(rutaId);
             } else {
                 stopLocationWatch();
+                mapContext.speedSample = null;
+                setTextContent("driverSpeedValue", "--");
                 setGpsStatus("ready", "GPS detenido");
                 setDriverNotice("Ruta en espera. El GPS no se está compartiendo.");
             }
@@ -2430,6 +2634,7 @@
         });
     }
 
+    // --- Errores y reconexion de Socket.IO ---
     function setupSocketErrors() {
         // Listeners globales de conexion y errores para reenganchar la sala y
         // mantener informado al conductor si la red cae.
@@ -2491,9 +2696,11 @@
             updateRouteStatus(tracking);
             updateLocationFields(tracking, "driverCoordinates", "driverLastUpdate");
             updateMapLocation(appState.driverMapContext, tracking);
+            updateDriverSpeed(appState.driverMapContext, tracking);
         });
     }
 
+    // --- Decoracion de la pagina de inicio (solo presentacion) ---
     function setupHeroCarousel() {
         // Se respeta `prefers-reduced-motion` para no forzar animaciones cuando
         // el usuario prefiere una experiencia mas estable.
@@ -2521,6 +2728,8 @@
         }, 7000);
     }
 
+    // Anima la aparicion de secciones al hacer scroll con IntersectionObserver
+    // (se omite si el usuario pide menos movimiento o el navegador no lo soporta).
     function setupScrollReveal() {
         const homePage = document.querySelector(".hero-georuta");
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2569,6 +2778,8 @@
         });
     }
 
+    // Oculta el boton de ayuda flotante cuando el pie de pagina esta visible
+    // para que no se encimen.
     function setupFloatingHelpVisibility() {
         const helpButton = document.querySelector(".floating-help-button");
         const footer = document.querySelector(".site-footer");
@@ -2599,6 +2810,9 @@
         checkFooterPosition();
     }
 
+    // --- Catalogo de colegios: filtrado por ciudad ---
+    // Normaliza un texto (sin tildes, en minusculas, sin espacios extremos) para
+    // comparar ciudades o colegios sin depender de mayusculas ni acentos.
     function normalizeCatalogKey(value) {
         return (value || "")
             .toString()
@@ -2623,6 +2837,8 @@
         }
     }
 
+    // Devuelve la lista de colegios de la ciudad indicada; si no coincide
+    // ninguna, devuelve el catalogo completo como respaldo.
     function buildSchoolOptions(catalog, cityValue) {
         if (!catalog) {
             return [];
@@ -2639,6 +2855,7 @@
         return Object.values(catalog).flat();
     }
 
+    // Rellena un <datalist> con opciones unicas y ordenadas alfabeticamente.
     function replaceDatalistOptions(datalist, options) {
         if (!datalist) {
             return;
@@ -2653,6 +2870,9 @@
         });
     }
 
+    // Rellena un <select> con las opciones de colegios, respetando el valor ya
+    // seleccionado y agregando una opcion "actual" si ese valor ya no esta en el
+    // catalogo (para no perder el dato guardado).
     function replaceSelectOptions(select, options, selectedValue) {
         if (!select) {
             return;
@@ -2737,6 +2957,9 @@
         });
     }
 
+    // --- Arranque y ciclo de vida de la pagina ---
+    // Al volver a la pestana se reintenta el wake lock si el GPS sigue activo;
+    // al salir de la pagina se detiene la vigilancia del GPS.
     document.addEventListener("visibilitychange", function () {
         if (!document.hidden && appState.driverWatchId !== null) {
             requestWakeLock();

@@ -39,6 +39,8 @@ VENTANA_FORMULARIO_SEGUNDOS = 10 * 60
 # y evitar que un abuso del chat sature o tumbe la aplicacion.
 MAX_MENSAJES_CHAT_PADRE = 15
 
+# Estado compartido en memoria. El candado serializa el acceso porque las
+# peticiones HTTP y los eventos de Socket.IO corren en hilos distintos.
 _candado = threading.Lock()
 _accesos: dict[str, deque] = {}
 _fallos: dict[str, deque] = {}
@@ -47,6 +49,7 @@ _cupos: dict[str, int] = {}
 
 
 def _ahora() -> float:
+    """Reloj interno monotono; no retrocede aunque cambie la hora del sistema."""
     return time.monotonic()
 
 

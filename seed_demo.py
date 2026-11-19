@@ -1,4 +1,14 @@
-"""Carga un escenario inicial funcional para probar Ruta Confianza localmente."""
+"""Carga un escenario inicial funcional para probar Ruta Confianza localmente.
+
+Este script crea datos de demostracion en la base de datos: un conductor con
+suscripcion activa, una ruta escolar con su PIN de acceso, tres estudiantes con
+sus acudientes, asistencias de ejemplo, dos mensajes de chat y una solicitud de
+conductor pendiente. El objetivo es poder abrir la app y ver el flujo completo
+(seguimiento, asistencia y chat) sin cargar datos a mano.
+
+Se ejecuta manualmente: `python seed_demo.py`. Es idempotente: si ya hay
+conductores o rutas, no vuelve a cargar nada para no duplicar informacion.
+"""
 from datetime import date, datetime, timedelta
 from app import create_app, db
 from werkzeug.security import generate_password_hash
@@ -18,12 +28,21 @@ from app.models import (
 
 
 def seed_demo_data():
+    """Inserta los datos demo dentro del contexto de la aplicacion Flask.
+
+    Abre un contexto de app (necesario para usar `db.session`) y, si la base ya
+    tiene datos, sale sin tocar nada. Crea el conductor, su suscripcion, la
+    ruta, estudiantes, asistencias, mensajes de chat y una solicitud pendiente.
+    Al final imprime las credenciales y URLs de acceso para probar.
+    """
     app = create_app()
     with app.app_context():
+        # Guarda de idempotencia: evita duplicar datos si se corre mas de una vez.
         if Conductor.query.count() > 0 or Ruta.query.count() > 0:
             print("La base de datos ya tiene informacion. No se cargaron datos demo.")
             return
 
+        # Conductor principal de la demo, con suscripcion activa y GPS habilitado.
         conductor = Conductor(
             nombres="Carlos",
             apellidos="Mendoza",
@@ -47,8 +66,11 @@ def seed_demo_data():
             suscripcion_vence_en=datetime.utcnow() + timedelta(days=365),
         )
         db.session.add(conductor)
+        # flush (no commit) asigna el id del conductor sin cerrar la transaccion,
+        # para poder referenciarlo en los registros siguientes.
         db.session.flush()
 
+        # Historial de suscripcion que respalda el estado ACTIVA del conductor.
         db.session.add(
             SuscripcionConductor(
                 conductor_id=conductor.id,
@@ -61,6 +83,8 @@ def seed_demo_data():
             )
         )
 
+        # Ruta escolar del conductor. El `pin_acceso` (FAM123) es lo que usan
+        # las familias en la URL de tracking y al unirse a la sala Socket.IO.
         ruta = Ruta(
             conductor_id=conductor.id,
             nombre="Ruta Colegio Central",
@@ -88,6 +112,7 @@ def seed_demo_data():
         db.session.add(ruta)
         db.session.flush()
 
+        # Estudiantes de la ruta con su ubicacion de parada y datos del acudiente.
         estudiantes = [
             Estudiante(
                 ruta_id=ruta.id,
@@ -147,6 +172,8 @@ def seed_demo_data():
         db.session.add_all(estudiantes)
         db.session.flush()
 
+        # Asistencias de ejemplo para hoy, una por estudiante, con estados
+        # distintos (subio, pendiente, no asistio) para ver la interfaz variada.
         db.session.add_all(
             [
                 Asistencia(
@@ -175,6 +202,8 @@ def seed_demo_data():
             ]
         )
 
+        # Mensajes iniciales del chat de la ruta: uno del sistema y otro del
+        # conductor, para que el panel de chat no aparezca vacio.
         db.session.add_all(
             [
                 MensajeChat(
@@ -194,6 +223,7 @@ def seed_demo_data():
             ]
         )
 
+        # Solicitud de registro de otro conductor, para probar el panel admin.
         db.session.add(
             SolicitudConductor(
                 nombres="Andrea",

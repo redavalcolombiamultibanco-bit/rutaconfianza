@@ -9,9 +9,13 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
+# Endpoints de los dos proveedores de geocodificacion que se consultan.
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 ARCGIS_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates"
+# El User-Agent identifica la aplicacion; Nominatim rechaza peticiones sin uno.
 USER_AGENT = "RutaExacta/1.0 (+https://rutaexacta.local)"
+# Caja envolvente aproximada del departamento de Casanare. Sirve para descartar
+# resultados que claramente cayeron fuera del area de operacion.
 CASANARE_BOUNDS = {
     "min_latitude": 4.15,
     "max_latitude": 6.45,
@@ -31,10 +35,14 @@ def geocode_colombia_address(*parts: str) -> Optional[dict]:
     if not cleaned_parts:
         return None
 
+    # Intento 1: ArcGIS, pero solo si acierta a una direccion concreta y no al
+    # centro del municipio (resultado aproximado).
     arcgis_result = _find_best_result_arcgis(cleaned_parts)
     if arcgis_result and not _is_approximate_result(arcgis_result):
         return _build_geodata(arcgis_result)
 
+    # Intento 2: Nominatim y, si la direccion lleva numero de casa, la
+    # interpolacion de cuadra (grid) cuando es mas precisa que el resultado.
     best_result = _find_best_result(cleaned_parts)
     grid_fallback = _geocode_grid_address(cleaned_parts)
     if grid_fallback and _should_prefer_grid_fallback(cleaned_parts, best_result):
@@ -42,6 +50,7 @@ def geocode_colombia_address(*parts: str) -> Optional[dict]:
     if best_result:
         return _build_geodata(best_result)
 
+    # Intento 3: esquinas ("calle X con carrera Y") que ningun proveedor ubica.
     intersection_result = _geocode_intersection(cleaned_parts)
     if intersection_result:
         return intersection_result
@@ -53,6 +62,11 @@ def geocode_colombia_address(*parts: str) -> Optional[dict]:
 
 
 def _clean_parts(parts: Iterable[str]) -> list[str]:
+    """Normaliza y descarta las partes vacias de una direccion.
+
+    Recibe los fragmentos de la direccion (calle, municipio, departamento...) y
+    devuelve solo los que aportan texto, ya normalizados.
+    """
     cleaned = []
     for part in parts:
         if not part or not str(part).strip():
@@ -69,6 +83,8 @@ _REGION_TOKENS = {"colombia", "casanare"}
 
 def _requested_city(parts: list[str]) -> str:
     """Devuelve el municipio, priorizando el contexto mas cercano al pais."""
+    # Se recorre de atras hacia adelante porque el municipio suele quedar pegado
+    # al pais; se saltan los tokens de region ("casanare", "colombia").
     for part in reversed(parts[1:]):
         normalized = _normalize_text(part)
         if normalized and normalized not in _REGION_TOKENS:
@@ -78,6 +94,8 @@ def _requested_city(parts: list[str]) -> str:
 
 def _is_within_casanare(result: dict) -> bool:
     """Descarta geocodificaciones que claramente cayeron fuera de Casanare."""
+    # Cada proveedor entrega las coordenadas con nombres distintos: ArcGIS usa
+    # location.x/location.y y Nominatim usa lat/lon.
     try:
         if isinstance(result.get("location"), dict):
             latitude = float(result["location"]["y"])
@@ -95,6 +113,7 @@ def _is_within_casanare(result: dict) -> bool:
 
 
 def _requires_casanare_bounds(parts: list[str]) -> bool:
+    """True si la direccion menciona Casanare y por tanto se exige ese limite."""
     return any(_normalize_text(part) == "casanare" for part in parts[1:])
 
 
@@ -111,6 +130,12 @@ def _is_approximate_result(result: dict) -> bool:
 
 
 def _build_candidate_queries(parts: list[str]) -> list[str]:
+    """Arma variantes de la consulta para dar varias oportunidades al proveedor.
+
+    Genera combinaciones con la via y el contexto (municipio) en distinto orden y
+    con distinto nivel de detalle, porque los geocodificadores aciertan mas con
+    unas formas que con otras. Devuelve como maximo 7 consultas sin repetir.
+    """
     queries = []
     road = _normalize_road_text(parts[0])
     road_spaced = _expand_numeric_letter_spacing(road)
@@ -152,6 +177,8 @@ def _build_candidate_queries(parts: list[str]) -> list[str]:
 
 
 def _normalize_road_text(value: str) -> str:
+    # Estandariza las abreviaturas de nomenclatura (cra -> carrera, cl -> calle,
+    # av -> avenida...) para que todos los intentos usen las mismas palabras.
     normalized = _normalize_text(value)
     normalized = re.sub(r"\b(cra|cr|kr|kra|k)\b", "carrera", normalized)
     normalized = re.sub(r"\b(cl|cll|c)\b", "calle", normalized)
@@ -175,6 +202,8 @@ def _normalize_road_text(value: str) -> str:
 
 
 def _normalize_text(value: str) -> str:
+    # Quita tildes (NFKD + ascii), pasa a minusculas y unifica separadores. Deja el
+    # texto comparable sin depender de acentos ni de espacios extra.
     normalized = unicodedata.normalize("NFKD", str(value))
     normalized = normalized.encode("ascii", "ignore").decode("ascii")
     normalized = normalized.lower()
@@ -185,6 +214,8 @@ def _normalize_text(value: str) -> str:
 
 
 def _strip_secondary_references(value: str) -> str:
+    # Corta desde palabras como "barrio", "torre" o "apartamento" en adelante:
+    # esos detalles no ayudan al proveedor y suelen desviar la busqueda.
     return re.sub(
         r"\b(apto|apartamento|interior|int|bloque|torre|casa|manzana|mz|lote|local|barrio|sector|conjunto|urbanizacion)\b.*$",
         "",
@@ -193,24 +224,34 @@ def _strip_secondary_references(value: str) -> str:
 
 
 def _strip_house_number(value: str) -> str:
+    # Quita el numero de casa (por ejemplo "# 15-30"); deja solo la via base.
     return re.sub(r"\s+#\s*\d+[a-z]?(?:\s*-\s*\d+[a-z]?)?.*$", "", value).strip(" ,")
 
 
 def _build_intersection_variant(value: str) -> str:
+    # Los proveedores entienden mejor las esquinas escritas con "y" que con "con".
     return re.sub(r"\bcon\b", " y ", value).strip(" ,")
 
 
 def _build_generic_variant(value: str) -> str:
+    # Variante sin el tipo de via: a veces el proveedor reconoce el numero solo.
     generic = re.sub(r"\b(carrera|calle|avenida|transversal|diagonal)\b", "", value)
     generic = re.sub(r"\s+", " ", generic)
     return generic.strip(" ,")
 
 
 def _expand_numeric_letter_spacing(value: str) -> str:
+    # Separa numero y letra ("15a" -> "15 a"); algunos proveedores prefieren el espacio.
     return re.sub(r"\b(\d+)([a-z])\b", r"\1 \2", value)
 
 
 def _find_best_result(parts: list[str]) -> Optional[dict]:
+    """Busca en Nominatim y devuelve la mejor coincidencia segun su puntaje.
+
+    Recorre las consultas candidatas, descarta resultados fuera de Casanare
+    cuando la direccion lo exige y se queda con el de mayor puntaje. Descarta los
+    puntajes demasiado bajos para no ubicar la direccion en otro municipio.
+    """
     queries = _build_candidate_queries(parts)
     best_result = None
     best_score = float("-inf")
@@ -231,6 +272,11 @@ def _find_best_result(parts: list[str]) -> Optional[dict]:
 
 
 def _find_best_result_arcgis(parts: list[str]) -> Optional[dict]:
+    """Equivalente a `_find_best_result` pero consultando ArcGIS.
+
+    Los umbrales de puntaje (105/90) son mas altos porque ArcGIS usa otra escala
+    de puntuacion que Nominatim.
+    """
     queries = _build_candidate_queries(parts)
     best_result = None
     best_score = float("-inf")
@@ -250,6 +296,11 @@ def _find_best_result_arcgis(parts: list[str]) -> Optional[dict]:
 
 
 def _build_geodata(result: dict) -> Optional[dict]:
+    """Convierte un resultado crudo de cualquier proveedor al formato interno.
+
+    Devuelve un dict con latitud, longitud y display_name; o None si el resultado
+    no trae coordenadas validas.
+    """
     try:
         if "location" in result:
             latitud = float(result["location"]["y"])
@@ -269,6 +320,11 @@ def _build_geodata(result: dict) -> Optional[dict]:
 
 
 def _geocode_intersection(parts: list[str]) -> Optional[dict]:
+    """Ubica una esquina promediando las coordenadas de las dos vias.
+
+    Geocodifica cada via por separado y devuelve el punto medio; si alguna de las
+    dos vias no se encuentra, no hay esquina y devuelve None.
+    """
     roads = _split_intersection(parts[0])
     if not roads:
         return None
@@ -289,6 +345,12 @@ def _geocode_intersection(parts: list[str]) -> Optional[dict]:
 
 
 def _geocode_grid_address(parts: list[str]) -> Optional[dict]:
+    """Estima el punto de una direccion con numero interpolando entre esquinas.
+
+    Cuando el proveedor no conoce la placa exacta, ubica la esquina base y la
+    siguiente (o la anterior) y coloca el punto a lo largo de esa cuadra segun el
+    numero de casa.
+    """
     parsed = _parse_grid_address(parts[0] if parts else "")
     if not parsed:
         return None
@@ -331,6 +393,12 @@ def _geocode_grid_address(parts: list[str]) -> Optional[dict]:
 
 
 def _parse_grid_address(value: str) -> Optional[tuple[str, str, str, str, Optional[int]]]:
+    """Descompone una direccion tipo "carrera 21 # 15-30".
+
+    Devuelve (tipo principal, numero principal, tipo transversal, numero
+    transversal, distancia de casa) o None si el texto no tiene ese formato. La
+    via transversal se deduce: si la principal es calle, la cruz es carrera.
+    """
     normalized = _normalize_road_text(value)
     match = re.search(
         r"\b(carrera|calle|transversal|diagonal|avenida)\s+(\d+\s*[a-z]?)\s+#\s*(\d+\s*[a-z]?)(?:\s*-\s*(\d+))?",
@@ -348,6 +416,7 @@ def _parse_grid_address(value: str) -> Optional[tuple[str, str, str, str, Option
 
 
 def _increment_road_number(value: str) -> Optional[str]:
+    """Suma 1 al numero de una via ("15" -> "16"); None si no es numerica."""
     match = re.match(r"^(\d+)(\s*[a-z]?)$", value.strip())
     if not match:
         return None
@@ -355,6 +424,7 @@ def _increment_road_number(value: str) -> Optional[str]:
 
 
 def _decrement_road_number(value: str) -> Optional[str]:
+    """Resta 1 al numero de una via; None si no es numerica o quedaria en cero."""
     match = re.match(r"^(\d+)(\s*[a-z]?)$", value.strip())
     if not match:
         return None
@@ -365,6 +435,12 @@ def _decrement_road_number(value: str) -> Optional[str]:
 
 
 def _should_prefer_grid_fallback(parts: list[str], best_result: Optional[dict]) -> bool:
+    """Decide si conviene la interpolacion de cuadra en vez del resultado.
+
+    Solo aplica cuando la direccion lleva numero de casa ("#") y el proveedor no
+    aporto ese numero (o no hubo resultado): ahi la interpolacion es mas precisa
+    que ubicar el punto en el centro del municipio.
+    """
     road = parts[0] if parts else ""
     if "#" not in road:
         return False
@@ -377,6 +453,7 @@ def _should_prefer_grid_fallback(parts: list[str], best_result: Optional[dict]) 
 
 
 def _split_intersection(value: str) -> Optional[tuple[str, str]]:
+    """Separa una esquina en sus dos vias ("calle 10 y carrera 5"); None si no es esquina."""
     normalized = _normalize_road_text(value)
     for separator in (" con ", " y "):
         if separator not in normalized:
@@ -390,10 +467,16 @@ def _split_intersection(value: str) -> Optional[tuple[str, str]]:
 
 
 def _looks_like_road(value: str) -> bool:
+    """True si el texto contiene un tipo de via reconocido (calle, carrera...)."""
     return bool(re.search(r"\b(carrera|calle|avenida|transversal|diagonal)\b", value))
 
 
 def _search_nominatim(query: str) -> list[dict]:
+    """Consulta Nominatim/OpenStreetMap y devuelve la lista cruda de resultados.
+
+    Llama a una API externa con un timeout; ante cualquier error de red o de
+    formato devuelve una lista vacia para no romper el flujo de geocodificacion.
+    """
     params = urlencode(
         {
             "q": query,
@@ -420,6 +503,10 @@ def _search_nominatim(query: str) -> list[dict]:
 
 
 def _search_arcgis(query: str) -> list[dict]:
+    """Consulta ArcGIS y devuelve la lista de candidatos.
+
+    Igual que `_search_nominatim`, ante cualquier fallo responde con lista vacia.
+    """
     params = urlencode(
         {
             "f": "json",
@@ -446,6 +533,12 @@ def _search_arcgis(query: str) -> list[dict]:
 
 
 def _score_result(result: dict, parts: list[str]) -> float:
+    """Puntua un resultado de Nominatim frente a lo que pidio el usuario.
+
+    Suma puntos por coincidir con la via y los tokens numericos, da mucho peso a
+    acertar el municipio y resta cuando el resultado es solo un aproximado o de
+    otro municipio. Cuanto mas alto, mejor coincidencia.
+    """
     score = 0.0
     road = _normalize_road_text(parts[0]) if parts else ""
     display_name = _normalize_text(result.get("display_name") or "")
@@ -504,6 +597,11 @@ def _score_result(result: dict, parts: list[str]) -> float:
 
 
 def _score_arcgis_result(result: dict, parts: list[str]) -> float:
+    """Puntua un candidato de ArcGIS (misma idea que `_score_result`).
+
+    Parte del score propio de ArcGIS y ajusta segun la via, los numeros, el
+    municipio y la precision del tipo de direccion.
+    """
     score = 0.0
     attributes = result.get("attributes", {}) if isinstance(result.get("attributes"), dict) else {}
     address_text = _normalize_text(result.get("address") or attributes.get("Match_addr") or "")

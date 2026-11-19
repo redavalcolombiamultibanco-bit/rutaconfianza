@@ -72,8 +72,14 @@ admin_bp = Blueprint("admin_bp", __name__, url_prefix="/admin")
 RUTAS_PUBLICAS_ADMIN = {"admin_bp.ingresar", "admin_bp.recuperar_password"}
 
 
+# --- Proteccion de acceso -----------------------------------------------------
+
+# Guardian que se ejecuta antes de cada peticion del panel: deja pasar solo las
+# rutas publicas de autenticacion y exige una sesion administrativa valida en el
+# resto; si no la hay, avisa y redirige al formulario de ingreso.
 @admin_bp.before_request
 def proteger_panel():
+    """Filtro que exige sesion administrativa en todas las rutas salvo las publicas."""
     if request.endpoint in RUTAS_PUBLICAS_ADMIN:
         return None
     if _admin_actual() is None:
@@ -82,8 +88,12 @@ def proteger_panel():
     return None
 
 
+# Muestra el formulario de ingreso (GET) y valida las credenciales (POST).
+# Recibe los campos username y password; aplica bloqueo temporal por IP tras
+# varios fallos, guarda el id del admin en la sesion y redirige al resumen.
 @admin_bp.route("/ingresar", methods=["GET", "POST"])
 def ingresar():
+    """Inicio de sesion del administrador con bloqueo por IP tras fallos."""
     admin = _admin_actual()
     if admin:
         return redirect(url_for("admin_bp.dashboard"))
@@ -125,13 +135,19 @@ def ingresar():
     return render_template("admin/ingresar.html")
 
 
+# Cierra la sesion del administrador eliminando su id de la sesion y vuelve al
+# formulario de ingreso.
 @admin_bp.route("/salir", methods=["POST"])
 def salir():
+    """Cierra la sesion administrativa actual."""
     session.pop("admin_user_id", None)
     flash("Sesion administrativa cerrada correctamente.", "success")
     return redirect(url_for("admin_bp.ingresar"))
 
 
+# Restablece la contrasena en dos pasos: primero identifica al usuario por su
+# username y luego valida la pregunta de seguridad antes de guardar la nueva
+# clave. Recibe los campos del formulario y solo es accesible sin sesion activa.
 @admin_bp.route("/recuperar-password", methods=["GET", "POST"])
 def recuperar_password():
     """Restablece la contrasena administrativa mediante la pregunta de seguridad."""
@@ -183,7 +199,10 @@ def recuperar_password():
     return render_template("admin/recuperar_password.html", paso="identificar", identificador=identificador)
 
 
+# Helper de recuperacion: reutiliza la plantilla mostrando el paso "verificar"
+# con la pregunta de seguridad del administrador encontrado.
 def _render_verificacion_admin(admin, identificador):
+    """Muestra la pantalla de pregunta de seguridad para restablecer contrasena."""
     return render_template(
         "admin/recuperar_password.html",
         paso="verificar",
@@ -195,12 +214,17 @@ def _render_verificacion_admin(admin, identificador):
 
 # --- Secciones ----------------------------------------------------------------
 
+# Vista principal del panel. Arma un resumen con metricas generales,
+# estadisticas para las graficas, las ultimas solicitudes pendientes, los
+# mensajes recientes y las rutas activas, y renderiza el resumen.
 @admin_bp.route("/")
 def dashboard():
     """Resumen general con indicadores y graficas."""
     admin_actual = _admin_actual()
     metricas = _metricas_generales()
     estadisticas = _estadisticas_dashboard()
+    # Las ultimas 5 solicitudes pendientes, los 5 mensajes mas recientes y todas
+    # las rutas activas alimentan las tarjetas y listas del resumen.
     solicitudes_pendientes = (
         SolicitudConductor.query.filter_by(estado=EstadoSolicitud.PENDIENTE)
         .order_by(SolicitudConductor.created_at.desc())
@@ -225,8 +249,11 @@ def dashboard():
     )
 
 
+# Listado de conductores ordenado por nombre, junto con el catalogo de
+# municipios y colegios que alimenta los formularios de la vista.
 @admin_bp.route("/conductores")
 def conductores():
+    """Listado y gestion de conductores registrados en la plataforma."""
     admin_actual = _admin_actual()
     return render_template(
         "admin/conductores.html",
@@ -239,8 +266,12 @@ def conductores():
     )
 
 
+# Listado de rutas y detalle de una ruta seleccionada. Recibe por query string
+# el parametro opcional ruta_id; si no llega, usa la primera ruta. Carga sus
+# estudiantes y los datos del mapa de seguimiento.
 @admin_bp.route("/rutas")
 def rutas():
+    """Listado de rutas con mapa, paradas y estudiantes asignados."""
     admin_actual = _admin_actual()
     ruta_seleccionada_id = request.args.get("ruta_id", type=int)
     lista_rutas = Ruta.query.order_by(Ruta.ciudad.asc(), Ruta.nombre.asc()).all()
@@ -264,6 +295,8 @@ def rutas():
     )
 
 
+# Endpoint JSON que consume el mapa del panel para refrescar el seguimiento.
+# Recibe el id de la ruta en la URL y devuelve plan, tracking y puntos GPS.
 @admin_bp.route("/api/ruta/<int:ruta_id>/seguimiento")
 def api_ruta_seguimiento(ruta_id):
     """Datos de seguimiento (plan, ubicacion y recorrido) para el mapa del panel."""
@@ -271,8 +304,11 @@ def api_ruta_seguimiento(ruta_id):
     return jsonify(_ruta_mapa_payload(ruta))
 
 
+# Lista los estudiantes de la ruta seleccionada (query string ruta_id) y
+# muestra el total de matriculados y cuantos aun no tienen geolocalizacion.
 @admin_bp.route("/estudiantes")
 def estudiantes():
+    """Listado de estudiantes matriculados, agrupados por ruta."""
     admin_actual = _admin_actual()
     lista_rutas = Ruta.query.order_by(Ruta.nombre.asc()).all()
     ruta_seleccionada_id = request.args.get("ruta_id", type=int)
@@ -294,8 +330,11 @@ def estudiantes():
     )
 
 
+# Muestra las solicitudes de registro de conductores ordenadas por fecha, con
+# el total de las que siguen pendientes de revision.
 @admin_bp.route("/solicitudes")
 def solicitudes():
+    """Solicitudes de registro de conductores pendientes por aprobar."""
     admin_actual = _admin_actual()
     return render_template(
         "admin/solicitudes.html",
@@ -306,8 +345,11 @@ def solicitudes():
     )
 
 
+# Bandeja de los mensajes enviados desde el formulario de contacto de la
+# landing, con el conteo de los que aun no han sido atendidos.
 @admin_bp.route("/mensajes")
 def mensajes():
+    """Bandeja de mensajes de contacto enviados desde la landing."""
     admin_actual = _admin_actual()
     return render_template(
         "admin/mensajes.html",
@@ -318,8 +360,10 @@ def mensajes():
     )
 
 
+# Lista las cuentas administrativas del sistema ordenadas por nombre y usuario.
 @admin_bp.route("/usuarios")
 def usuarios():
+    """Listado de cuentas administrativas del sistema."""
     admin_actual = _admin_actual()
     return render_template(
         "admin/usuarios.html",
@@ -331,8 +375,11 @@ def usuarios():
 
 # --- Reportes -----------------------------------------------------------------
 
+# Muestra el catalogo de reportes disponibles (constante REPORTES) y la fecha
+# de hoy, que la vista usa como rango por defecto en los filtros.
 @admin_bp.route("/reportes")
 def reportes():
+    """Catalogo de reportes exportables disponibles en el panel."""
     admin_actual = _admin_actual()
     return render_template(
         "admin/reportes.html",
@@ -343,8 +390,12 @@ def reportes():
     )
 
 
+# Genera y descarga un reporte: CSV por defecto o PDF si formato=pdf. Recibe el
+# nombre del reporte en la URL y las fechas opcionales desde/hasta por query
+# string; construye el contenido y lo envia como archivo adjunto.
 @admin_bp.route("/reportes/descargar/<nombre>")
 def descargar_reporte(nombre):
+    """Genera y descarga un reporte en formato CSV o PDF."""
     formato = request.args.get("formato", "csv").lower()
     desde = _parse_fecha(request.args.get("desde"))
     hasta = _parse_fecha(request.args.get("hasta"))
@@ -380,8 +431,10 @@ def descargar_reporte(nombre):
 
 # --- Respaldos ----------------------------------------------------------------
 
+# Lista los respaldos existentes y muestra la carpeta donde se almacenan.
 @admin_bp.route("/respaldos")
 def respaldos():
+    """Listado de respaldos disponibles y su carpeta de almacenamiento."""
     admin_actual = _admin_actual()
     return render_template(
         "admin/respaldos.html",
@@ -392,8 +445,11 @@ def respaldos():
     )
 
 
+# Crea una copia de seguridad (respaldo) a partir del motivo enviado en el
+# formulario; informa el resultado y vuelve al listado de respaldos.
 @admin_bp.route("/respaldos/crear", methods=["POST"])
 def crear_respaldo_admin():
+    """Crea una copia de seguridad de la base de datos y los archivos subidos."""
     try:
         info = crear_respaldo(request.form.get("motivo", "manual").strip() or "manual")
     except OSError as exc:
@@ -403,8 +459,11 @@ def crear_respaldo_admin():
     return redirect(url_for("admin_bp.respaldos"))
 
 
+# Descarga un archivo .zip de respaldo existente identificado por su nombre en
+# la URL; si no existe, avisa y vuelve al listado.
 @admin_bp.route("/respaldos/<path:nombre>/descargar")
 def descargar_respaldo(nombre):
+    """Descarga un archivo de respaldo existente (.zip)."""
     try:
         archivo = ruta_respaldo(nombre)
     except (ValueError, FileNotFoundError):
@@ -413,8 +472,10 @@ def descargar_respaldo(nombre):
     return send_file(archivo, as_attachment=True, download_name=archivo.name)
 
 
+# Elimina del almacenamiento local el respaldo indicado en la URL.
 @admin_bp.route("/respaldos/<path:nombre>/eliminar", methods=["POST"])
 def eliminar_respaldo_admin(nombre):
+    """Elimina un respaldo del almacenamiento local."""
     try:
         eliminado = eliminar_respaldo(nombre)
     except (ValueError, FileNotFoundError):
@@ -424,8 +485,12 @@ def eliminar_respaldo_admin(nombre):
     return redirect(url_for("admin_bp.respaldos"))
 
 
+# Restaura la base de datos desde un respaldo existente o desde un .zip que el
+# administrador sube en el formulario; valida el tipo de archivo antes de
+# reemplazar la informacion actual.
 @admin_bp.route("/respaldos/restaurar", methods=["POST"])
 def restaurar_respaldo_admin():
+    """Restaura la base de datos desde un respaldo existente o subido."""
     nombre = request.form.get("nombre", "").strip()
     archivo_subido = request.files.get("archivo")
     try:
@@ -447,8 +512,12 @@ def restaurar_respaldo_admin():
 
 # --- Conductores --------------------------------------------------------------
 
+# Crea un conductor con sus datos personales y de vehiculo desde el formulario.
+# Valida la contrasena, y si la suscripcion queda activa le crea tambien su
+# registro de suscripcion historico.
 @admin_bp.route("/conductores/crear", methods=["POST"])
 def crear_conductor():
+    """Crea un conductor nuevo con sus datos y vehiculo, y su suscripcion."""
     password = request.form.get("password", "")
     if len(password) < 8:
         flash("La contrasena del conductor debe tener al menos 8 caracteres.", "warning")
@@ -502,8 +571,11 @@ def crear_conductor():
     )
 
 
+# Actualiza los datos personales y del vehiculo de un conductor existente;
+# recibe su id en la URL y, si se envia una contrasena nueva valida, la cambia.
 @admin_bp.route("/conductores/<int:conductor_id>/actualizar", methods=["POST"])
 def actualizar_conductor(conductor_id):
+    """Actualiza los datos personales y del vehiculo de un conductor."""
     conductor = Conductor.query.get_or_404(conductor_id)
     nueva_password = request.form.get("password", "")
     if nueva_password and len(nueva_password) < 8:
@@ -531,8 +603,11 @@ def actualizar_conductor(conductor_id):
     )
 
 
+# Cambia solo la contrasena de acceso del conductor indicado, sin tocar el resto
+# de sus datos. Recibe el id en la URL y la nueva clave en el formulario.
 @admin_bp.route("/conductores/<int:conductor_id>/credenciales", methods=["POST"])
 def actualizar_credenciales_conductor(conductor_id):
+    """Cambia unicamente la contrasena de acceso del conductor."""
     password = request.form.get("password", "")
     if len(password) < 8:
         flash("La contrasena del conductor debe tener al menos 8 caracteres.", "warning")
@@ -547,8 +622,11 @@ def actualizar_credenciales_conductor(conductor_id):
     )
 
 
+# Elimina un conductor y, en cascada, todas sus rutas y estudiantes asociados.
+# Recibe el id en la URL.
 @admin_bp.route("/conductores/<int:conductor_id>/eliminar", methods=["POST"])
 def eliminar_conductor(conductor_id):
+    """Elimina un conductor y todas sus rutas y estudiantes asociados."""
     conductor = Conductor.query.get_or_404(conductor_id)
     nombre = conductor.nombre_completo
     db.session.delete(conductor)
@@ -559,8 +637,12 @@ def eliminar_conductor(conductor_id):
     )
 
 
+# Cambia el estado de la suscripcion de un conductor (activa/inactiva), lo que
+# a su vez habilita o bloquea su GPS, y deja un registro historico del cambio.
+# Recibe el id en la URL y el nuevo estado en el formulario.
 @admin_bp.route("/suscripcion/<int:conductor_id>", methods=["POST"])
 def actualizar_suscripcion(conductor_id):
+    """Activa o desactiva la suscripcion (y por tanto el GPS) de un conductor."""
     conductor = Conductor.query.get_or_404(conductor_id)
     estado = request.form.get("estado", EstadoSuscripcion.ACTIVA.value)
     estado_enum = EstadoSuscripcion(estado)
@@ -588,8 +670,12 @@ def actualizar_suscripcion(conductor_id):
 
 # --- Rutas --------------------------------------------------------------------
 
+# Crea una ruta nueva. Puede usar un conductor existente (campo conductor_id) o
+# crear uno desde el mismo formulario con los campos nuevo_*. Antes de guardar
+# geolocaliza origen y destino.
 @admin_bp.route("/rutas/crear", methods=["POST"])
 def crear_ruta():
+    """Crea una ruta nueva, con conductor existente o registrado en el formulario."""
     conductor_id = request.form.get("conductor_id", type=int)
     if conductor_id:
         conductor = Conductor.query.get_or_404(conductor_id)
@@ -627,8 +713,12 @@ def crear_ruta():
     )
 
 
+# Actualiza los datos generales y la geolocalizacion de una ruta existente.
+# Recibe el id en la URL y exige un conductor asignado; recalcula las
+# coordenadas de origen y destino antes de guardar.
 @admin_bp.route("/rutas/<int:ruta_id>/actualizar", methods=["POST"])
 def actualizar_ruta(ruta_id):
+    """Actualiza los datos generales y geolocalizacion de una ruta."""
     ruta = Ruta.query.get_or_404(ruta_id)
     conductor_id = request.form.get("conductor_id", type=int)
     if conductor_id is None:
@@ -658,8 +748,11 @@ def actualizar_ruta(ruta_id):
     )
 
 
+# Elimina una ruta junto con sus estudiantes y asistencias asociadas.
+# Recibe el id en la URL.
 @admin_bp.route("/rutas/<int:ruta_id>/eliminar", methods=["POST"])
 def eliminar_ruta(ruta_id):
+    """Elimina una ruta y sus estudiantes y asistencias asociadas."""
     ruta = Ruta.query.get_or_404(ruta_id)
     nombre = ruta.nombre
     db.session.delete(ruta)
@@ -670,6 +763,8 @@ def eliminar_ruta(ruta_id):
     )
 
 
+# Borra todos los mensajes del chat de una ruta y avisa por WebSocket a la sala
+# para que conductor y familias vacien su conversacion. Recibe el id en la URL.
 @admin_bp.route("/rutas/<int:ruta_id>/chat/limpiar", methods=["POST"])
 def limpiar_chat_ruta(ruta_id):
     """Vacía el chat de una ruta desde el panel administrativo."""
@@ -689,8 +784,11 @@ def limpiar_chat_ruta(ruta_id):
 
 # --- Estudiantes --------------------------------------------------------------
 
+# Matricula un estudiante en la ruta indicada (campo ruta_id) y calcula sus
+# coordenadas a partir de la direccion y el barrio antes de guardarlo.
 @admin_bp.route("/estudiantes/crear", methods=["POST"])
 def crear_estudiante():
+    """Matricula un estudiante en una ruta y geocodifica su direccion."""
     ruta_id = request.form.get("ruta_id", type=int)
     if ruta_id is None:
         flash("Debes seleccionar una ruta para matricular al estudiante.", "warning")
@@ -723,8 +821,11 @@ def crear_estudiante():
     )
 
 
+# Actualiza los datos de un estudiante, incluida la ruta a la que pertenece.
+# Si cambia de ruta, notifica tanto la ruta anterior como la nueva.
 @admin_bp.route("/estudiantes/<int:estudiante_id>/actualizar", methods=["POST"])
 def actualizar_estudiante(estudiante_id):
+    """Actualiza los datos de un estudiante, incluyendo su ruta asignada."""
     estudiante = Estudiante.query.get_or_404(estudiante_id)
     ruta_anterior_id = estudiante.ruta_id
     ruta_id = request.form.get("ruta_id", type=int)
@@ -757,8 +858,11 @@ def actualizar_estudiante(estudiante_id):
     )
 
 
+# Elimina un estudiante y avisa a la sala de su ruta para refrescar el listado.
+# Recibe el id en la URL.
 @admin_bp.route("/estudiantes/<int:estudiante_id>/eliminar", methods=["POST"])
 def eliminar_estudiante(estudiante_id):
+    """Elimina un estudiante y notifica el cambio a la sala de su ruta."""
     estudiante = Estudiante.query.get_or_404(estudiante_id)
     ruta_id = estudiante.ruta_id
     nombre_estudiante = estudiante.nombre_completo
@@ -773,8 +877,11 @@ def eliminar_estudiante(estudiante_id):
 
 # --- Mensajes y solicitudes ---------------------------------------------------
 
+# Marca un mensaje de contacto como atendido y guarda la fecha de atencion.
+# Recibe el id del mensaje en la URL.
 @admin_bp.route("/mensajes/<int:mensaje_id>/atender", methods=["POST"])
 def marcar_mensaje_atendido(mensaje_id):
+    """Marca un mensaje de contacto como atendido por el administrador."""
     mensaje = MensajeContacto.query.get_or_404(mensaje_id)
     mensaje.atendido = True
     mensaje.atendido_en = datetime.utcnow()
@@ -785,8 +892,12 @@ def marcar_mensaje_atendido(mensaje_id):
     )
 
 
+# Aprueba o rechaza una solicitud de registro de conductor segun la accion del
+# formulario (aprobar/rechazar) y registra quien y cuando la reviso. Recibe el
+# id de la solicitud en la URL.
 @admin_bp.route("/solicitudes/<int:solicitud_id>/gestionar", methods=["POST"])
 def gestionar_solicitud(solicitud_id):
+    """Aprueba o rechaza una solicitud de registro de conductor."""
     solicitud = SolicitudConductor.query.get_or_404(solicitud_id)
     accion = request.form.get("accion")
     if accion not in {"aprobar", "rechazar"}:
@@ -804,8 +915,11 @@ def gestionar_solicitud(solicitud_id):
 
 # --- Usuarios administrativos -------------------------------------------------
 
+# Crea una cuenta administrativa nueva con su pregunta de seguridad, validando
+# nombre, usuario, contrasena (minimo 8 caracteres) y datos de recuperacion.
 @admin_bp.route("/usuarios/crear", methods=["POST"])
 def crear_usuario_admin():
+    """Crea una cuenta administrativa nueva con pregunta de seguridad."""
     username = request.form.get("username", "").strip().lower()
     nombre = request.form.get("nombre", "").strip()
     password = request.form.get("password", "")
@@ -839,8 +953,11 @@ def crear_usuario_admin():
     )
 
 
+# Actualiza nombre, usuario, estado y (opcionalmente) contrasena de una cuenta
+# administrativa. Evita que el admin en sesion desactive su propia cuenta.
 @admin_bp.route("/usuarios/<int:admin_user_id>/actualizar", methods=["POST"])
 def actualizar_usuario_admin(admin_user_id):
+    """Actualiza datos, contrasena y estado de una cuenta administrativa."""
     admin_user = AdminUser.query.get_or_404(admin_user_id)
     username = request.form.get("username", "").strip().lower()
     nombre = request.form.get("nombre", "").strip()
@@ -881,7 +998,11 @@ def actualizar_usuario_admin(admin_user_id):
 
 # --- Utilidades ---------------------------------------------------------------
 
+# Helpers internos reutilizados por las rutas de arriba: sesion, datos para el
+# mapa, metricas, parseo de fechas, guardado transaccional y geocodificacion.
+
 def _admin_actual():
+    """Devuelve el administrador autenticado o None si no hay sesion valida."""
     admin_user_id = session.get("admin_user_id")
     if admin_user_id is None:
         return None
@@ -912,6 +1033,7 @@ def _ruta_mapa_payload(ruta):
 
 
 def _estudiantes_de_ruta(ruta):
+    """Ordena los estudiantes de una ruta por orden de parada y nombre."""
     if ruta is None:
         return []
     return sorted(
@@ -925,6 +1047,7 @@ def _estudiantes_de_ruta(ruta):
 
 
 def _metricas_generales():
+    """Cuenta resumida de conductores, rutas, estudiantes, etc. para el panel."""
     return {
         "conductores": Conductor.query.count(),
         "rutas": Ruta.query.count(),
@@ -940,6 +1063,8 @@ def _estadisticas_dashboard():
     """Datos listos para graficar en el resumen."""
     hoy = date.today()
 
+    # Agrupa los conductores por estado de suscripcion (consulta con group_by)
+    # y arranca cada contador en 0 para que la grafica siempre tenga las claves.
     suscripciones_por_estado = {estado.value: 0 for estado in EstadoSuscripcion}
     for estado, total in (
         db.session.query(Conductor.estado_suscripcion, func.count(Conductor.id))
@@ -972,6 +1097,7 @@ def _estadisticas_dashboard():
 
 
 def _parse_fecha(valor):
+    """Convierte un texto YYYY-MM-DD en fecha, o None si es invalido."""
     if not valor:
         return None
     try:
@@ -981,6 +1107,7 @@ def _parse_fecha(valor):
 
 
 def _subtitulo_fechas(desde, hasta):
+    """Construye un subtitulo legible con el rango de fechas del reporte."""
     if desde and hasta:
         return f"Periodo del {desde.isoformat()} al {hasta.isoformat()}"
     if desde:
@@ -990,7 +1117,11 @@ def _subtitulo_fechas(desde, hasta):
     return ""
 
 
+# Cierra una operacion de escritura: confirma la transaccion y muestra el
+# resultado por flash. Si el commit choca con una restriccion (IntegrityError)
+# revierte y muestra el error; en exito notifica las rutas afectadas.
 def _commit_with_feedback(success_message, error_message, redirect_to=None, notify_route_ids=None):
+    """Guarda los cambios, informa el resultado y redirige a la vista indicada."""
     try:
         db.session.commit()
     except IntegrityError:
@@ -1002,7 +1133,10 @@ def _commit_with_feedback(success_message, error_message, redirect_to=None, noti
     return redirect(redirect_to or url_for("admin_bp.dashboard"))
 
 
+# Avisa por WebSocket a las salas de las rutas afectadas que su plan cambio,
+# para que el mapa de conductores y familias se actualice en vivo.
 def _notify_route_plan_updates(route_ids):
+    """Emite 'tracking:plan_updated' a la sala de cada ruta afectada."""
     if not route_ids:
         return
     unique_route_ids = set()
@@ -1027,14 +1161,20 @@ def _notify_route_plan_updates(route_ids):
         )
 
 
+# Lee un campo tipo checkbox del formulario y lo interpreta como booleano;
+# si el campo no viene, devuelve el valor por defecto.
 def _form_bool(field_name, default=False):
+    """Convierte el valor de un checkbox del formulario en True/False."""
     raw_value = request.form.get(field_name)
     if raw_value is None:
         return default
     return str(raw_value).strip().lower() in {"1", "true", "on", "yes", "si"}
 
 
+# Genera un codigo de ruta unico con el formato RT-XXXXX, repitiendo el intento
+# mientras el codigo ya exista en la base de datos.
 def _generate_unique_code():
+    """Devuelve un codigo de ruta unico (RT-XXXXX)."""
     alphabet = string.ascii_uppercase + string.digits
     while True:
         candidate = f"RT-{''.join(secrets.choice(alphabet) for _ in range(5))}"
@@ -1042,7 +1182,10 @@ def _generate_unique_code():
             return candidate
 
 
+# Genera un PIN de acceso unico de 6 caracteres alfanumericos, repitiendo el
+# intento mientras el PIN ya exista en la base de datos.
 def _generate_unique_pin():
+    """Devuelve un PIN de acceso unico de 6 caracteres."""
     alphabet = string.ascii_uppercase + string.digits
     while True:
         candidate = "".join(secrets.choice(alphabet) for _ in range(6))
@@ -1050,7 +1193,11 @@ def _generate_unique_pin():
             return candidate
 
 
+# Completa y geolocaliza los datos de una ruta: hereda la ciudad del conductor
+# si falta y convierte las direcciones de origen y destino en coordenadas; si no
+# logra ubicarlas deja las coordenadas en None y avisa con un flash.
 def _hydrate_route_geodata(ruta, conductor=None):
+    """Asigna ciudad y coordenadas de origen/destino a una ruta."""
     route_driver = conductor or ruta.conductor
     if ruta.ciudad is None and route_driver and route_driver.ciudad:
         ruta.ciudad = route_driver.ciudad
@@ -1087,6 +1234,9 @@ def _hydrate_route_geodata(ruta, conductor=None):
         ruta.destino_longitud = None
 
 
+# Helper del formulario de rutas: si el bloque "nuevo conductor" viene completo
+# crea el Conductor (con suscripcion activa) y lo deja en la sesion; aqui no se
+# hace commit, eso lo decide la ruta que llama a esta funcion.
 def _conductor_desde_formulario():
     """Crea un conductor con los campos 'nuevo_*' del formulario de rutas.
 
@@ -1140,7 +1290,11 @@ def _conductor_desde_formulario():
     return conductor, None
 
 
+# Completa y geolocaliza los datos de un estudiante: hereda la ciudad de su ruta
+# si falta y convierte su direccion en coordenadas; si no hay direccion o no se
+# puede ubicar, deja las coordenadas en None y avisa con un flash.
 def _hydrate_student_geodata(estudiante, ruta=None):
+    """Asigna ciudad y coordenadas a la ubicacion de un estudiante."""
     route = ruta or estudiante.ruta
     if estudiante.ciudad is None and route and route.ciudad:
         estudiante.ciudad = route.ciudad

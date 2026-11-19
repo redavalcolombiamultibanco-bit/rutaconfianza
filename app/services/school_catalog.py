@@ -5,9 +5,12 @@ import re
 import unicodedata
 
 
+# Archivo Markdown que sirve de fuente del catalogo (queda junto a este modulo).
 CATALOG_FILENAME = "levantamiento_colegios_casanare.md"
+# Una seccion de municipio es una linea "## Nombre"; un colegio es "1. Nombre".
 SECTION_PATTERN = re.compile(r"^##\s+(.+?)\s*$")
 ITEM_PATTERN = re.compile(r"^\d+\.\s+(.+?)\s*$")
+# Secciones del Markdown que no son municipios y no deben listarse.
 IGNORED_SECTIONS = {
     "Resumen Ejecutivo",
     "Alcance y criterio",
@@ -16,6 +19,7 @@ IGNORED_SECTIONS = {
     "Fuentes base",
 }
 
+# Municipios de Casanare usados como base de los formularios.
 CASANARE_MUNICIPALITIES = [
     "Aguazul",
     "Chameza",
@@ -40,14 +44,17 @@ CASANARE_MUNICIPALITIES = [
 
 
 def _catalog_path() -> Path:
+    """Ruta del archivo Markdown del catalogo (en la misma carpeta del modulo)."""
     return Path(__file__).resolve().with_name(CATALOG_FILENAME)
 
 
 def _normalize(value: str) -> str:
+    """Quita tildes y pasa a minusculas para comparar nombres sin depender de acentos."""
     normalized = unicodedata.normalize("NFD", value or "")
     return "".join(char for char in normalized if unicodedata.category(char) != "Mn").strip().lower()
 
 
+# Version normalizada de las secciones ignoradas, lista para comparar.
 NORMALIZED_IGNORED_SECTIONS = {_normalize(item) for item in IGNORED_SECTIONS}
 
 
@@ -61,6 +68,8 @@ def load_school_catalog():
     catalog = {}
     current_city = None
 
+    # Se recorre el Markdown linea por linea: las secciones "##" abren el
+    # municipio actual y los items numerados se agregan a ese municipio.
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line:
