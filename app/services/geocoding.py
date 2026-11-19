@@ -26,6 +26,11 @@ USER_AGENT = "RutaExacta/1.0 (+https://rutaexacta.local)"
 # otro municipio) y el punto quedaria a kilometros de la direccion real. En ese
 # caso se descarta y se deja el punto sobre la via, que siempre queda cerca.
 GRID_DISTANCIA_MAXIMA_METROS = 500
+# Distancia maxima permitida entre la direccion ubicada y el centro del municipio
+# pedido. Si el proveedor devuelve un punto mas lejos, se considera que lo ubico
+# fuera del pueblo y se prefiere el centro del municipio. Asi, en cualquier
+# municipio, una casa nunca queda "por alla fuera del mapa".
+MUNICIPIO_DISTANCIA_MAXIMA_METROS = 12000
 # Caja envolvente aproximada del departamento de Casanare. Sirve para descartar
 # resultados que claramente cayeron fuera del area de operacion.
 CASANARE_BOUNDS = {
@@ -58,7 +63,7 @@ def geocode_colombia_address(*parts: str) -> Optional[dict]:
         and not _is_approximate_result(arcgis_result)
         and _matches_house_number(arcgis_result, cleaned_parts)
     ):
-        return _build_geodata(arcgis_result)
+        return _ajustar_al_municipio(_build_geodata(arcgis_result), cleaned_parts)
 
     # Intento 2: Nominatim y, si la direccion lleva numero de casa, la
     # interpolacion de cuadra (grid) cuando es mas precisa que el resultado.
@@ -66,23 +71,23 @@ def geocode_colombia_address(*parts: str) -> Optional[dict]:
     if best_result and not _should_prefer_grid_fallback(cleaned_parts, best_result):
         # Ya quedo ubicada la via, asi que no hace falta estimar la cuadra: se
         # evita ese calculo, que es el que mas consultas gasta y mas tarda.
-        return _build_geodata(best_result)
+        return _ajustar_al_municipio(_build_geodata(best_result), cleaned_parts)
     grid_fallback = _geocode_grid_address(cleaned_parts)
     if grid_fallback and _grid_cerca_de_la_via(grid_fallback, best_result):
-        return grid_fallback
+        return _ajustar_al_municipio(grid_fallback, cleaned_parts)
     # Si la interpolacion no es confiable, se deja el punto sobre la via ubicada:
     # es aproximado, pero siempre cae en la calle correcta y no a kilometros.
     if best_result:
-        return _build_geodata(best_result)
+        return _ajustar_al_municipio(_build_geodata(best_result), cleaned_parts)
 
     # Intento 3: esquinas ("calle X con carrera Y") que ningun proveedor ubica.
     intersection_result = _geocode_intersection(cleaned_parts)
     if intersection_result:
-        return intersection_result
+        return _ajustar_al_municipio(intersection_result, cleaned_parts)
 
     # Ultimo recurso: se acepta el resultado aproximado si pertenece al municipio pedido.
     if arcgis_result:
-        return _build_geodata(arcgis_result)
+        return _ajustar_al_municipio(_build_geodata(arcgis_result), cleaned_parts)
     return None
 
 
@@ -415,6 +420,86 @@ def _grid_cerca_de_la_via(grid_result: dict, best_result: Optional[dict]) -> boo
     if not via:
         return True
     return _distancia_metros(grid_result, via) <= GRID_DISTANCIA_MAXIMA_METROS
+
+
+# Centros de municipio ya resueltos, para no repetir la consulta (se recuerda el
+# resultado por municipio durante la vida del proceso).
+_centros_municipio: dict[str, Optional[dict]] = {}
+# Radio para considerar que dos resultados del mismo municipio apuntan al mismo
+# sitio. Sirve para separar el casco urbano de un centroide municipal lejano.
+CENTRO_MUNICIPIO_RADIO_METROS = 3000
+
+
+def _punto_mas_denso(puntos: list[dict]) -> Optional[dict]:
+    """Devuelve el punto con mas vecinos cercanos (la ubicacion urbana repetida).
+
+    Los proveedores suelen incluir, ademas del casco urbano, el centroide del
+    municipio completo, que puede quedar a decenas de kilometros del pueblo. El
+    punto urbano aparece varias veces y los centroides quedan aislados, asi que
+    se elige el que agrupa mas coincidencias.
+    """
+    mejor = None
+    mejor_vecinos = -1
+    for punto in puntos:
+        vecinos = sum(
+            1
+            for otro in puntos
+            if otro is not punto and _distancia_metros(punto, otro) <= CENTRO_MUNICIPIO_RADIO_METROS
+        )
+        if vecinos > mejor_vecinos:
+            mejor = punto
+            mejor_vecinos = vecinos
+    return mejor
+
+
+def _municipio_centro(parts: list[str]) -> Optional[dict]:
+    """Ubica el casco urbano del municipio pedido; None si no se puede resolver.
+
+    Es la referencia para saber si una direccion quedo dentro del pueblo. Se
+    consulta una sola vez por municipio y se guarda el resultado. Se prueba
+    primero ArcGIS porque no tiene el limite de una peticion por segundo.
+    """
+    ciudad = _requested_city(parts)
+    if not ciudad:
+        return None
+    if ciudad in _centros_municipio:
+        return _centros_municipio[ciudad]
+
+    consulta = ", ".join([ciudad, "Casanare", "Colombia"])
+    puntos = []
+    for buscar in (_search_arcgis, _search_nominatim):
+        for result in buscar(consulta):
+            punto = _build_geodata(result)
+            if punto and _is_within_casanare(result):
+                puntos.append(punto)
+
+    centro = _punto_mas_denso(puntos)
+    _centros_municipio[ciudad] = centro
+    return centro
+
+
+def _dentro_del_municipio(geodata: dict, parts: list[str]) -> bool:
+    """True si la direccion ubicada cae dentro del municipio pedido.
+
+    Si no se pudo obtener el centro del municipio no hay con que comparar y se
+    acepta el resultado del proveedor (no se descarta por falta de referencia).
+    """
+    centro = _municipio_centro(parts)
+    if not centro:
+        return True
+    return _distancia_metros(geodata, centro) <= MUNICIPIO_DISTANCIA_MAXIMA_METROS
+
+
+def _ajustar_al_municipio(geodata: Optional[dict], parts: list[str]) -> Optional[dict]:
+    """Evita que una direccion quede ubicada fuera del municipio pedido.
+
+    Si el punto cae demasiado lejos del centro del municipio, se prefiere ese
+    centro: es mejor una ubicacion aproximada dentro del pueblo que una casa
+    "por alla fuera del mapa".
+    """
+    if not geodata or _dentro_del_municipio(geodata, parts):
+        return geodata
+    return _municipio_centro(parts) or geodata
 
 
 def _geocode_intersection(parts: list[str]) -> Optional[dict]:
