@@ -21,6 +21,11 @@ NOMINATIM_INTERVALO_MINIMO = 1.1
 NOMINATIM_ESPERA_TRAS_BLOQUEO = 1.5
 # El User-Agent identifica la aplicacion; Nominatim rechaza peticiones sin uno.
 USER_AGENT = "RutaExacta/1.0 (+https://rutaexacta.local)"
+# Cuando la interpolacion de cuadra (grid) cae mas lejos que esto desde la via
+# conocida, significa que una de las esquinas se resolvio mal (por ejemplo, en
+# otro municipio) y el punto quedaria a kilometros de la direccion real. En ese
+# caso se descarta y se deja el punto sobre la via, que siempre queda cerca.
+GRID_DISTANCIA_MAXIMA_METROS = 500
 # Caja envolvente aproximada del departamento de Casanare. Sirve para descartar
 # resultados que claramente cayeron fuera del area de operacion.
 CASANARE_BOUNDS = {
@@ -63,8 +68,10 @@ def geocode_colombia_address(*parts: str) -> Optional[dict]:
         # evita ese calculo, que es el que mas consultas gasta y mas tarda.
         return _build_geodata(best_result)
     grid_fallback = _geocode_grid_address(cleaned_parts)
-    if grid_fallback:
+    if grid_fallback and _grid_cerca_de_la_via(grid_fallback, best_result):
         return grid_fallback
+    # Si la interpolacion no es confiable, se deja el punto sobre la via ubicada:
+    # es aproximado, pero siempre cae en la calle correcta y no a kilometros.
     if best_result:
         return _build_geodata(best_result)
 
@@ -385,6 +392,29 @@ def _build_geodata(result: dict) -> Optional[dict]:
         "longitud": longitud,
         "display_name": display_name,
     }
+
+
+def _distancia_metros(punto_a: dict, punto_b: dict) -> float:
+    """Distancia aproximada en metros entre dos puntos con latitud y longitud."""
+    diferencia_latitud = punto_a["latitud"] - punto_b["latitud"]
+    diferencia_longitud = punto_a["longitud"] - punto_b["longitud"]
+    return (diferencia_latitud ** 2 + diferencia_longitud ** 2) ** 0.5 * 111320
+
+
+def _grid_cerca_de_la_via(grid_result: dict, best_result: Optional[dict]) -> bool:
+    """True si el punto interpolado cae cerca de la via ya ubicada.
+
+    La interpolacion de cuadra suma las coordenadas de dos esquinas; si una de
+    ellas se resolvio mal (por ejemplo, en otro municipio), el punto queda a
+    kilometros de la calle. En ese caso conviene descartarlo. Si no hay via
+    conocida no hay con que comparar y se acepta.
+    """
+    if not best_result:
+        return True
+    via = _build_geodata(best_result)
+    if not via:
+        return True
+    return _distancia_metros(grid_result, via) <= GRID_DISTANCIA_MAXIMA_METROS
 
 
 def _geocode_intersection(parts: list[str]) -> Optional[dict]:
