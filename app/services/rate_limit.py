@@ -34,11 +34,16 @@ VENTANA_RECUPERACION_SEGUNDOS = 10 * 60
 # Envios permitidos desde una misma IP en los formularios publicos.
 MAX_ENVIOS_FORMULARIO = 5
 VENTANA_FORMULARIO_SEGUNDOS = 10 * 60
+# Mensajes maximos que puede enviar una misma IP en el chat de familias.
+# Es un cupo acumulativo (no se reinicia con el tiempo) para frenar el spam
+# y evitar que un abuso del chat sature o tumbe la aplicacion.
+MAX_MENSAJES_CHAT_PADRE = 15
 
 _candado = threading.Lock()
 _accesos: dict[str, deque] = {}
 _fallos: dict[str, deque] = {}
 _bloqueos: dict[str, float] = {}
+_cupos: dict[str, int] = {}
 
 
 def _ahora() -> float:
@@ -95,6 +100,26 @@ def demasiadas_peticiones(clave: str, maximo: int, ventana_segundos: int) -> boo
         marcas.append(ahora)
         _liberar_memoria(ahora)
         return False
+
+
+def cupo_agotado(clave: str, maximo: int) -> bool:
+    """True si `clave` ya agoto su cupo total de mensajes; si no, descuenta uno.
+
+    A diferencia de `demasiadas_peticiones`, el cupo no se reinicia con el
+    tiempo: cuando una IP llega a `maximo` mensajes queda bloqueada.
+    """
+    with _candado:
+        usados = _cupos.get(clave, 0)
+        if usados >= maximo:
+            return True
+        _cupos[clave] = usados + 1
+        return False
+
+
+def cupo_restante(clave: str, maximo: int) -> int:
+    """Mensajes que le quedan a `clave` dentro de su cupo total."""
+    with _candado:
+        return max(0, maximo - _cupos.get(clave, 0))
 
 
 def bloqueo_restante(clave: str) -> int:

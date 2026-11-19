@@ -1773,17 +1773,127 @@
         }
     }
 
+    // Estado del chat de familias: el servidor puede cerrarlo (el conductor) o
+    // agotar el cupo de mensajes por IP. Se refleja en el formulario de la sala.
+    const chatFamilias = { cupoAgotado: false, cerrado: false, avisoBloqueo: "", avisoRestantes: "" };
+
+    function formularioChatPadres() {
+        const form = document.getElementById("chatForm");
+        if (!form || (form.dataset.remitenteTipo || "padre") !== "padre") {
+            return null;
+        }
+        return form;
+    }
+
+    function escribirAvisoChat(texto) {
+        const hint = document.getElementById("chatLimitHint");
+        if (!hint) {
+            return;
+        }
+        hint.textContent = texto || "";
+        hint.classList.toggle("d-none", !texto);
+    }
+
+    function textoAvisoChat() {
+        if (chatFamilias.cerrado) {
+            return chatFamilias.avisoBloqueo || "El conductor cerró el chat de familias.";
+        }
+        if (chatFamilias.cupoAgotado) {
+            return chatFamilias.avisoBloqueo;
+        }
+        return chatFamilias.avisoRestantes;
+    }
+
+    function refrescarFormularioChat() {
+        const form = formularioChatPadres();
+        const bloqueado = chatFamilias.cupoAgotado || chatFamilias.cerrado;
+        if (form) {
+            form.querySelectorAll("input, textarea, button").forEach(function (node) {
+                node.disabled = bloqueado;
+            });
+        }
+        escribirAvisoChat(textoAvisoChat());
+    }
+
+    function actualizarBotonChat(habilitado) {
+        const boton = document.getElementById("chatToggleBtn");
+        if (!boton) {
+            return;
+        }
+        boton.dataset.habilitado = habilitado ? "true" : "false";
+        const icono = boton.querySelector("i");
+        if (icono) {
+            icono.className = habilitado ? "bi bi-toggle-on" : "bi bi-toggle-off";
+        }
+        const etiqueta = document.getElementById("chatToggleLabel");
+        if (etiqueta) {
+            etiqueta.textContent = habilitado ? "Chat familias abierto" : "Chat familias cerrado";
+        }
+    }
+
     function setupChatForm() {
         const form = document.getElementById("chatForm");
         if (!form || !socket) {
             return;
         }
+        const sender = document.getElementById("chatSender");
+        const message = document.getElementById("chatMessage");
+        const remitenteTipo = form.dataset.remitenteTipo || "padre";
+        // En la sala de familias el formulario arranca segun lo que renderizo
+        // el servidor: el conductor pudo haber cerrado el chat.
+        chatFamilias.cerrado = form.dataset.chatHabilitado === "false";
+        refrescarFormularioChat();
+
+        socket.on("chat:quota", function (payload) {
+            if (!payload) {
+                return;
+            }
+            const restantes = Number(payload.restantes);
+            if (!Number.isFinite(restantes)) {
+                return;
+            }
+            if (restantes <= 0) {
+                chatFamilias.avisoBloqueo =
+                    chatFamilias.avisoBloqueo || "Alcanzaste el límite de " + payload.maximo + " mensajes en este chat.";
+                chatFamilias.avisoRestantes = "";
+                chatFamilias.cupoAgotado = true;
+            } else {
+                chatFamilias.avisoRestantes = "Te quedan " + restantes + " mensajes para escribir en este chat.";
+            }
+            refrescarFormularioChat();
+        });
+
+        socket.on("chat:state", function (payload) {
+            if (!payload) {
+                return;
+            }
+            const habilitado = payload.habilitado === true;
+            actualizarBotonChat(habilitado);
+            chatFamilias.cerrado = !habilitado;
+            if (!chatFamilias.cerrado && !chatFamilias.cupoAgotado) {
+                chatFamilias.avisoBloqueo = "";
+            }
+            refrescarFormularioChat();
+        });
+
+        const toggle = document.getElementById("chatToggleBtn");
+        if (toggle) {
+            toggle.addEventListener("click", function () {
+                socket.emit("chat:set_familias", {
+                    ruta_id: parseInt(toggle.dataset.rutaId, 10),
+                    habilitado: toggle.dataset.habilitado !== "true",
+                });
+            });
+        }
+
         form.addEventListener("submit", function (event) {
             event.preventDefault();
+            // El cierre y el cupo solo aplican al chat de las familias; el
+            // conductor puede seguir enviando novedades a la ruta.
+            if (remitenteTipo === "padre" && (chatFamilias.cupoAgotado || chatFamilias.cerrado)) {
+                return;
+            }
             const rutaId = parseInt(form.dataset.rutaId, 10);
-            const remitenteTipo = form.dataset.remitenteTipo || "padre";
-            const sender = document.getElementById("chatSender");
-            const message = document.getElementById("chatMessage");
             if (!sender.value.trim() || !message.value.trim()) {
                 return;
             }
@@ -2328,7 +2438,23 @@
         }
         socket.on("system:error", function (payload) {
             const message = payload && payload.message ? payload.message : "Ocurrio un error en tiempo real.";
-            setGpsStatus("error", "Revisa el GPS");
+            // El indicador "GPS del teléfono" solo refleja el estado del GPS.
+            // Los errores de otras funciones (chat, asistencia, PIN, sesión)
+            // se muestran en el aviso, sin culpar al GPS del dispositivo.
+            if (payload && payload.scope === "gps") {
+                setGpsStatus("error", "GPS requiere atención");
+            }
+            // El chat de familias queda bloqueado si se agoto el cupo por IP
+            // (definitivo) o si el conductor cerro el chat (se puede reabrir).
+            if (payload && payload.scope === "chat") {
+                chatFamilias.avisoBloqueo = message;
+                chatFamilias.cupoAgotado = true;
+                refrescarFormularioChat();
+            }
+            if (payload && payload.scope === "chat-cerrado") {
+                chatFamilias.cerrado = true;
+                refrescarFormularioChat();
+            }
             setDriverNotice(message);
             window.console.error(message);
         });

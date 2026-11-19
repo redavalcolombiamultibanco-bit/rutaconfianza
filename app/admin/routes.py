@@ -4,7 +4,7 @@ El panel esta dividido en secciones independientes (resumen, conductores,
 rutas, estudiantes, solicitudes, mensajes, usuarios, reportes y respaldos)
 que comparten una barra lateral de navegacion comun.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 import secrets
 import string
 import zipfile
@@ -454,7 +454,7 @@ def crear_conductor():
         flash("La contrasena del conductor debe tener al menos 8 caracteres.", "warning")
         return redirect(url_for("admin_bp.conductores"))
 
-    estado_suscripcion = EstadoSuscripcion(request.form.get("estado_suscripcion", EstadoSuscripcion.PENDIENTE.value))
+    estado_suscripcion = EstadoSuscripcion(request.form.get("estado_suscripcion", EstadoSuscripcion.ACTIVA.value))
     conductor = Conductor(
         nombres=request.form.get("nombres", "").strip(),
         apellidos=request.form.get("apellidos", "").strip(),
@@ -475,8 +475,9 @@ def crear_conductor():
         estado_suscripcion=estado_suscripcion,
     )
     if estado_suscripcion == EstadoSuscripcion.ACTIVA:
+        # La suscripcion activa queda sin fecha de vencimiento: solo el
+        # administrador puede cambiarla de estado desde el panel.
         conductor.suscripcion_inicia_en = datetime.utcnow()
-        conductor.suscripcion_vence_en = datetime.utcnow() + timedelta(days=30)
     db.session.add(conductor)
     if estado_suscripcion == EstadoSuscripcion.ACTIVA:
         try:
@@ -490,7 +491,6 @@ def crear_conductor():
                 conductor_id=conductor.id,
                 estado=estado_suscripcion,
                 fecha_inicio=conductor.suscripcion_inicia_en,
-                fecha_fin=conductor.suscripcion_vence_en,
                 observaciones="Alta inicial desde el panel administrativo.",
                 activado_por="Administrador",
             )
@@ -567,12 +567,14 @@ def actualizar_suscripcion(conductor_id):
     conductor.estado_suscripcion = estado_enum
     conductor.gps_habilitado = estado_enum == EstadoSuscripcion.ACTIVA
     conductor.suscripcion_inicia_en = datetime.utcnow()
-    conductor.suscripcion_vence_en = datetime.utcnow() + timedelta(days=30) if conductor.gps_habilitado else None
+    # Una suscripcion activa no se vence sola: solo el estado que elija el
+    # administrador habilita o bloquea el GPS del conductor.
+    if estado_enum == EstadoSuscripcion.ACTIVA:
+        conductor.suscripcion_vence_en = None
     registro = SuscripcionConductor(
         conductor_id=conductor.id,
         estado=estado_enum,
         fecha_inicio=conductor.suscripcion_inicia_en,
-        fecha_fin=conductor.suscripcion_vence_en,
         observaciones="Actualizacion manual desde el panel maestro.",
         activado_por="Administrador",
     )
@@ -1119,9 +1121,20 @@ def _conductor_desde_formulario():
         password_hash=generate_password_hash(password),
         capacidad_vehiculo=request.form.get("nuevo_capacidad_vehiculo", type=int),
         ciudad=request.form.get("nuevo_ciudad", "").strip() or None,
-        estado_suscripcion=EstadoSuscripcion.PENDIENTE,
-        gps_habilitado=False,
+        # El conductor nuevo entra con la suscripcion activa y sin fecha de
+        # vencimiento, para que su GPS no se bloquee solo.
+        estado_suscripcion=EstadoSuscripcion.ACTIVA,
+        gps_habilitado=True,
+        suscripcion_inicia_en=datetime.utcnow(),
         activo=True,
+    )
+    conductor.suscripciones.append(
+        SuscripcionConductor(
+            estado=EstadoSuscripcion.ACTIVA,
+            fecha_inicio=conductor.suscripcion_inicia_en,
+            observaciones="Alta junto con la ruta desde el panel administrativo.",
+            activado_por="Administrador",
+        )
     )
     db.session.add(conductor)
     return conductor, None

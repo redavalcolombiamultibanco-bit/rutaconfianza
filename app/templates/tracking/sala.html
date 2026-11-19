@@ -108,10 +108,11 @@
                             <div class="text-secondary small chat-box__empty">Todavía no hay mensajes en esta ruta.</div>
                             {% endfor %}
                         </div>
-                        <form id="chatForm" class="d-grid gap-2 tracking-live__chat-form" data-ruta-id="{{ ruta.id }}" data-remitente-tipo="padre">
+                        <form id="chatForm" class="d-grid gap-2 tracking-live__chat-form" data-ruta-id="{{ ruta.id }}" data-remitente-tipo="padre" data-chat-habilitado="{{ 'true' if ruta.chat_familias_habilitado else 'false' }}">
                             <input id="chatSender" class="form-control" placeholder="Tu nombre" autocomplete="name" required>
                             <textarea id="chatMessage" class="form-control" rows="3" placeholder="Escribe un mensaje para el grupo" required></textarea>
                             <button class="btn btn-primary rounded-pill" type="submit"><i class="bi bi-send me-2"></i>Enviar mensaje</button>
+                            <p id="chatLimitHint" class="text-secondary small mb-0 d-none"></p>
                         </form>
                     </div>
                 </div>

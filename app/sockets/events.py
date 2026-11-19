@@ -9,8 +9,11 @@ from app.models import Asistencia, EstadoAsistencia, Estudiante, MensajeChat, Ru
 from app.services.rate_limit import (
     BLOQUEO_PIN_SEGUNDOS,
     MAX_FALLOS_PIN,
+    MAX_MENSAJES_CHAT_PADRE,
     bloqueo_restante,
     cliente_ip,
+    cupo_agotado,
+    cupo_restante,
     demasiadas_peticiones,
     espera_legible,
     olvidar,
@@ -21,6 +24,8 @@ from app.services.route_access import route_for_session
 # Tope de mensajes por minuto para que nadie inunde el chat de una ruta.
 MAX_MENSAJES_CHAT = 20
 VENTANA_CHAT_SEGUNDOS = 60
+# El tope total de mensajes de las familias vive en `rate_limit.py`
+# (MAX_MENSAJES_CHAT_PADRE) para compartirlo con el control por IP.
 
 
 def register_socket_events(socketio):
@@ -81,7 +86,7 @@ def register_socket_events(socketio):
         if not _require_route_driver(ruta):
             return
         if not ruta.conductor or not ruta.conductor.puede_transmitir_gps:
-            return _emit_error("La suscripcion del conductor no permite transmitir GPS.")
+            return _emit_error("La suscripcion del conductor no permite transmitir GPS.", scope="gps")
         ruta.recorrido_activo = True
         ruta.inicio_recorrido_en = datetime.utcnow()
         ruta.fin_recorrido_en = None
@@ -134,12 +139,12 @@ def register_socket_events(socketio):
         if not _require_route_driver(ruta):
             return
         if not ruta.conductor or not ruta.conductor.puede_transmitir_gps:
-            return _emit_error("El conductor no tiene permiso activo para transmitir ubicacion.")
+            return _emit_error("El conductor no tiene permiso activo para transmitir ubicacion.", scope="gps")
         if not ruta.recorrido_activo:
-            return _emit_error("Primero debes iniciar el recorrido antes de transmitir ubicación.")
+            return _emit_error("Primero debes iniciar el recorrido antes de transmitir ubicación.", scope="gps")
         latitud, longitud = _validate_coordinates(data)
         if latitud is None or longitud is None:
-            return _emit_error("Las coordenadas enviadas no son validas.")
+            return _emit_error("Las coordenadas enviadas no son validas.", scope="gps")
         precision = _normalize_positive_float(data.get("accuracy"))
         velocidad = _normalize_positive_float(data.get("speed"))
         rumbo = _normalize_heading(data.get("heading"))
@@ -235,6 +240,17 @@ def register_socket_events(socketio):
             conductor_id = ruta.conductor_id
         elif remitente_tipo == TipoRemitenteChat.PADRE:
             conductor_id = None
+            # El conductor puede cerrar el chat de familias de su ruta.
+            if not ruta.chat_familias_habilitado:
+                return _emit_error("El conductor cerró el chat de familias.", scope="chat-cerrado")
+            # Cupo por IP para el chat de familias: al llegar al limite se deja
+            # de aceptar el mensaje, evitando spam y caidas de la aplicacion.
+            clave_cupo = f"chat-padre:{cliente_ip()}"
+            if cupo_agotado(clave_cupo, MAX_MENSAJES_CHAT_PADRE):
+                return _emit_error(
+                    "Alcanzaste el limite de {} mensajes en este chat.".format(MAX_MENSAJES_CHAT_PADRE),
+                    scope="chat",
+                )
         else:
             return _emit_error("El tipo de remitente no es valido para este chat.")
         mensaje = MensajeChat(
@@ -247,6 +263,35 @@ def register_socket_events(socketio):
         db.session.add(mensaje)
         _commit_changes()
         emit("chat:new_message", mensaje.to_socket_payload(), to=ruta.socket_room)
+        if remitente_tipo == TipoRemitenteChat.PADRE:
+            emit(
+                "chat:quota",
+                {
+                    "ruta_id": ruta.id,
+                    "maximo": MAX_MENSAJES_CHAT_PADRE,
+                    "restantes": cupo_restante(clave_cupo, MAX_MENSAJES_CHAT_PADRE),
+                },
+            )
+
+    @socketio.on("chat:set_familias")
+    def handle_chat_set_familias(data):
+        # El conductor abre o cierra el chat de familias de su propia ruta.
+        data = data if isinstance(data, dict) else {}
+        ruta = _resolve_route(data)
+        if not ruta:
+            return _emit_error("No se encontro la ruta para cambiar el chat.")
+        if not _require_route_driver(ruta):
+            return
+        ruta.chat_familias_habilitado = bool(data.get("habilitado"))
+        try:
+            _commit_changes()
+        except SQLAlchemyError:
+            return _emit_error("No se pudo guardar el estado del chat.")
+        socketio.emit(
+            "chat:state",
+            {"ruta_id": ruta.id, "habilitado": ruta.chat_familias_habilitado},
+            to=ruta.socket_room,
+        )
 
 
 def _resolve_route(data):
@@ -451,5 +496,11 @@ def _commit_changes():
         raise
 
 
-def _emit_error(message):
-    emit("system:error", {"message": message})
+def _emit_error(message, scope=None):
+    # `scope` permite al cliente distinguir si el aviso es del GPS del telefono
+    # ("gps") o de otra funcion (chat, asistencia, PIN, etc.). Asi el indicador
+    # de GPS no se marca como error por problemas que no son del GPS.
+    payload = {"message": message}
+    if scope is not None:
+        payload["scope"] = scope
+    emit("system:error", payload)

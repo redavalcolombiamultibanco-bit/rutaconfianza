@@ -112,11 +112,10 @@ class Conductor(TimestampMixin, db.Model):
 
     @property
     def suscripcion_vigente(self):
-        if self.estado_suscripcion != EstadoSuscripcion.ACTIVA:
-            return False
-        if self.suscripcion_vence_en is None:
-            return True
-        return self.suscripcion_vence_en >= datetime.utcnow()
+        # El estado manda: mientras la suscripcion este ACTIVA la cuenta sigue
+        # vigente. No hay vencimiento automatico por fecha, asi que una
+        # suscripcion activa no se desactiva sola.
+        return self.estado_suscripcion == EstadoSuscripcion.ACTIVA
 
     @property
     def puede_transmitir_gps(self):
@@ -173,6 +172,8 @@ class Ruta(TimestampMixin, db.Model):
     horario_regreso = db.Column(db.String(30), nullable=True)
     pin_acceso = db.Column(db.String(10), unique=True, nullable=False, index=True)
     activa = db.Column(db.Boolean, nullable=False, default=True)
+    # El conductor puede cerrar el chat de familias de su ruta cuando lo necesite.
+    chat_familias_habilitado = db.Column(db.Boolean, nullable=False, default=True)
     recorrido_activo = db.Column(db.Boolean, nullable=False, default=False)
     inicio_recorrido_en = db.Column(db.DateTime, nullable=True)
     fin_recorrido_en = db.Column(db.DateTime, nullable=True)
@@ -201,6 +202,7 @@ class Ruta(TimestampMixin, db.Model):
             "nombre": self.nombre,
             "ciudad": self.ciudad,
             "pin_acceso": self.pin_acceso,
+            "chat_familias_habilitado": self.chat_familias_habilitado,
             "recorrido_activo": self.recorrido_activo,
             "latitud": self.latitud_actual,
             "longitud": self.longitud_actual,

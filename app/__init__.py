@@ -503,6 +503,7 @@ def _ensure_runtime_schema():
     schema_updates = {
         "rutas": {
             "ciudad": "ALTER TABLE rutas ADD COLUMN ciudad VARCHAR(80)",
+            "chat_familias_habilitado": "ALTER TABLE rutas ADD COLUMN chat_familias_habilitado BOOLEAN NOT NULL DEFAULT 1",
             "origen_latitud": "ALTER TABLE rutas ADD COLUMN origen_latitud FLOAT",
             "origen_longitud": "ALTER TABLE rutas ADD COLUMN origen_longitud FLOAT",
             "destino_direccion": "ALTER TABLE rutas ADD COLUMN destino_direccion VARCHAR(180)",

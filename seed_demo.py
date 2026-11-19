@@ -41,8 +41,10 @@ def seed_demo_data():
             activo=True,
             gps_habilitado=True,
             estado_suscripcion=EstadoSuscripcion.ACTIVA,
+            # La suscripcion demo se deja con una vigencia amplia para que el
+            # GPS del conductor no se bloquee al poco tiempo de cargar los datos.
             suscripcion_inicia_en=datetime.utcnow(),
-            suscripcion_vence_en=datetime.utcnow() + timedelta(days=30),
+            suscripcion_vence_en=datetime.utcnow() + timedelta(days=365),
         )
         db.session.add(conductor)
         db.session.flush()
