@@ -166,6 +166,21 @@ def _house_number_in_query(parts: list[str]) -> str:
     return re.sub(r"\s+", "", match.group(1)) if match else ""
 
 
+def _house_number_in_text(haystack: str, house_number: str) -> bool:
+    """True si el numero de casa aparece en el texto del proveedor.
+
+    Los geocodificadores escriben el numero de dos formas ("8-25" o "8 25"),
+    asi que se aceptan ambas: sin esto se descartaba una placa exacta solo
+    porque venia con espacio en vez de guion, y la casa terminaba en otra
+    calle. Se exige que el numero no sea parte de un numero mas largo (que
+    "8-25" no coincida dentro de "18-25").
+    """
+    for variante in (house_number, house_number.replace("-", " ")):
+        if re.search(r"(?<!\d)" + re.escape(variante) + r"(?!\d)", haystack):
+            return True
+    return False
+
+
 def _matches_house_number(result: dict, parts: list[str]) -> bool:
     """True si el candidato reconoce el numero de casa que pidio el usuario.
 
@@ -180,7 +195,7 @@ def _matches_house_number(result: dict, parts: list[str]) -> bool:
 
     attributes = result.get("attributes") if isinstance(result.get("attributes"), dict) else {}
     haystack = _normalize_text(result.get("address") or attributes.get("Match_addr") or "")
-    return house_number in re.sub(r"\s+", "", haystack)
+    return _house_number_in_text(haystack, house_number)
 
 
 def _tiene_placa_exacta(result: dict, parts: list[str]) -> bool:
@@ -188,8 +203,9 @@ def _tiene_placa_exacta(result: dict, parts: list[str]) -> bool:
     numero = _house_number_in_query(parts)
     if not numero or not result:
         return False
-    reconocido = (result.get("address") or {}).get("house_number") or ""
-    return re.sub(r"\s+", "", str(reconocido)) == numero
+    address = result.get("address") if isinstance(result.get("address"), dict) else {}
+    reconocido = _normalize_text(address.get("house_number") or "")
+    return _house_number_in_text(reconocido, numero)
 
 
 def _build_candidate_queries(parts: list[str]) -> list[str]:
