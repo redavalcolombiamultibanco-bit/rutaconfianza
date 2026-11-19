@@ -274,8 +274,12 @@
         .driver-hud-next strong { font-size: .96rem; }
         .driver-hud-next-meta { font-size: .7rem; margin-left: 0; max-width: 100%; white-space: normal; }
         .driver-map-card.is-expanded .driver-hud-stops { display: none; }
-        /* Reduce elementos flotantes; la velocidad GPS sigue transmitiendose. */
-        .driver-speed-pill { display: none; }
+        /* Conserva la velocidad visible sin ocupar demasiado espacio. */
+        .driver-speed-pill { gap: .38rem; left: .75rem; padding: .38rem .55rem; top: 4.1rem; }
+        .driver-speed-pill i { font-size: .85rem; }
+        .driver-speed-value { font-size: 1.15rem; min-width: 2ch; }
+        .driver-speed-unit { font-size: .58rem; }
+        .driver-map-card.is-expanded .driver-speed-pill { bottom: .75rem; left: .75rem; top: auto; }
         .driver-map .leaflet-control-attribution {
             font-size: .5rem !important;
             max-width: min(88vw, 420px);
