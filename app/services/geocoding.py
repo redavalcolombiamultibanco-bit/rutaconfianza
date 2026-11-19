@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import unicodedata
 from typing import Iterable, Optional
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -12,6 +14,11 @@ from urllib.request import Request, urlopen
 # Endpoints de los dos proveedores de geocodificacion que se consultan.
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 ARCGIS_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates"
+# Nominatim solo admite una peticion por segundo; se deja margen para no recibir
+# un 429 y perder la respuesta. Tras un bloqueo se espera algo mas antes de
+# reintentar.
+NOMINATIM_INTERVALO_MINIMO = 1.1
+NOMINATIM_ESPERA_TRAS_BLOQUEO = 1.5
 # El User-Agent identifica la aplicacion; Nominatim rechaza peticiones sin uno.
 USER_AGENT = "RutaExacta/1.0 (+https://rutaexacta.local)"
 # Caja envolvente aproximada del departamento de Casanare. Sirve para descartar
@@ -51,8 +58,12 @@ def geocode_colombia_address(*parts: str) -> Optional[dict]:
     # Intento 2: Nominatim y, si la direccion lleva numero de casa, la
     # interpolacion de cuadra (grid) cuando es mas precisa que el resultado.
     best_result = _find_best_result(cleaned_parts)
+    if best_result and not _should_prefer_grid_fallback(cleaned_parts, best_result):
+        # Ya quedo ubicada la via, asi que no hace falta estimar la cuadra: se
+        # evita ese calculo, que es el que mas consultas gasta y mas tarda.
+        return _build_geodata(best_result)
     grid_fallback = _geocode_grid_address(cleaned_parts)
-    if grid_fallback and _should_prefer_grid_fallback(cleaned_parts, best_result):
+    if grid_fallback:
         return grid_fallback
     if best_result:
         return _build_geodata(best_result)
@@ -160,6 +171,15 @@ def _matches_house_number(result: dict, parts: list[str]) -> bool:
     return house_number in re.sub(r"\s+", "", haystack)
 
 
+def _tiene_placa_exacta(result: dict, parts: list[str]) -> bool:
+    """True si el resultado ya reconoce el numero de casa que pidio el usuario."""
+    numero = _house_number_in_query(parts)
+    if not numero or not result:
+        return False
+    reconocido = (result.get("address") or {}).get("house_number") or ""
+    return re.sub(r"\s+", "", str(reconocido)) == numero
+
+
 def _build_candidate_queries(parts: list[str]) -> list[str]:
     """Arma variantes de la consulta para dar varias oportunidades al proveedor.
 
@@ -174,6 +194,13 @@ def _build_candidate_queries(parts: list[str]) -> list[str]:
     road_without_house_number = _strip_house_number(road_without_details)
     context = parts[1:]
 
+    # El barrio es el dato menos confiable: suele estar mal escrito o no existir
+    # para el proveedor y, cuando no lo reconoce, hace perder la coincidencia
+    # exacta de la placa. Por eso la variante con la via y el municipio, sin el
+    # barrio, se prueba primero; la que si lo incluye queda como alternativa.
+    sin_barrio = [parte for parte in context if parte == _requested_city(parts) or parte in _REGION_TOKENS]
+    if len(sin_barrio) != len(context):
+        queries.append(", ".join([road, *sin_barrio]))
     queries.append(", ".join([road, *context]))
     if road_spaced != road:
         queries.append(", ".join([road_spaced, *context]))
@@ -280,14 +307,18 @@ def _expand_numeric_letter_spacing(value: str) -> str:
     return re.sub(r"\b(\d+)([a-z])\b", r"\1 \2", value)
 
 
-def _find_best_result(parts: list[str]) -> Optional[dict]:
+def _find_best_result(parts: list[str], max_queries: Optional[int] = None) -> Optional[dict]:
     """Busca en Nominatim y devuelve la mejor coincidencia segun su puntaje.
 
     Recorre las consultas candidatas, descarta resultados fuera de Casanare
     cuando la direccion lo exige y se queda con el de mayor puntaje. Descarta los
     puntajes demasiado bajos para no ubicar la direccion en otro municipio.
+    `max_queries` limita cuantas variantes se prueban, para las busquedas
+    auxiliares donde cada consulta cuesta una peticion al proveedor.
     """
     queries = _build_candidate_queries(parts)
+    if max_queries is not None:
+        queries = queries[:max_queries]
     best_result = None
     best_score = float("-inf")
 
@@ -300,7 +331,9 @@ def _find_best_result(parts: list[str]) -> Optional[dict]:
             if score > best_score:
                 best_result = result
                 best_score = score
-        if best_score >= 8:
+        # Si ya se encontro la placa exacta no hace falta seguir consultando: se
+        # ahorran peticiones y se reduce el riesgo de bloqueo del proveedor.
+        if _tiene_placa_exacta(best_result, parts) or best_score >= 8:
             break
     # Se descartan coincidencias demasiado debiles (por ejemplo, de otro municipio).
     return best_result if best_score >= 4 else None
@@ -365,8 +398,10 @@ def _geocode_intersection(parts: list[str]) -> Optional[dict]:
         return None
 
     context = parts[1:]
-    first_result = _find_best_result([roads[0], *context])
-    second_result = _find_best_result([roads[1], *context])
+    # Cada via es un nombre simple ("calle 14"), asi que con las dos primeras
+    # variantes basta: probar mas solo suma consultas al proveedor y demora.
+    first_result = _find_best_result([roads[0], *context], max_queries=2)
+    second_result = _find_best_result([roads[1], *context], max_queries=2)
     first_geodata = _build_geodata(first_result) if first_result else None
     second_geodata = _build_geodata(second_result) if second_result else None
     if not first_geodata or not second_geodata:
@@ -506,9 +541,26 @@ def _looks_like_road(value: str) -> bool:
     return bool(re.search(r"\b(carrera|calle|avenida|transversal|diagonal)\b", value))
 
 
+# Marca de tiempo de la ultima consulta enviada a Nominatim, para no superar su
+# limite de una peticion por segundo.
+_ultima_consulta_nominatim = 0.0
+
+
+def _esperar_turno_nominatim():
+    """Espera lo necesario para que la siguiente consulta no llegue demasiado pronto."""
+    global _ultima_consulta_nominatim
+    espera = NOMINATIM_INTERVALO_MINIMO - (time.monotonic() - _ultima_consulta_nominatim)
+    if espera > 0:
+        time.sleep(espera)
+    _ultima_consulta_nominatim = time.monotonic()
+
+
 def _search_nominatim(query: str) -> list[dict]:
     """Consulta Nominatim/OpenStreetMap y devuelve la lista cruda de resultados.
 
+    Nominatim permite una peticion por segundo: si se envian varias seguidas
+    responde 429 y la respuesta se perderia, dejando la direccion mal ubicada.
+    Por eso se espacian las consultas y se reintenta una vez tras el bloqueo.
     Llama a una API externa con un timeout; ante cualquier error de red o de
     formato devuelve una lista vacia para no romper el flujo de geocodificacion.
     """
@@ -529,12 +581,20 @@ def _search_nominatim(query: str) -> list[dict]:
             "Accept-Language": "es",
         },
     )
-    try:
-        with urlopen(request, timeout=8) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except Exception:
-        return []
-    return payload if isinstance(payload, list) else []
+    for intento in range(2):
+        _esperar_turno_nominatim()
+        try:
+            with urlopen(request, timeout=8) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            return payload if isinstance(payload, list) else []
+        except HTTPError as error:
+            if error.code != 429:
+                return []
+            # Bloqueado por exceso de peticiones: se espera antes de reintentar.
+            time.sleep(NOMINATIM_ESPERA_TRAS_BLOQUEO)
+        except Exception:
+            return []
+    return []
 
 
 def _search_arcgis(query: str) -> list[dict]:
