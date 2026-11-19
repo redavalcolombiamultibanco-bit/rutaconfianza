@@ -36,9 +36,16 @@ def geocode_colombia_address(*parts: str) -> Optional[dict]:
         return None
 
     # Intento 1: ArcGIS, pero solo si acierta a una direccion concreta y no al
-    # centro del municipio (resultado aproximado).
+    # centro del municipio (resultado aproximado). Si la direccion trae numero de
+    # casa, tambien se exige que el candidato reconozca ese numero: asi un
+    # resultado a nivel de calle no descarta una placa exacta que si conoce el
+    # otro proveedor. ArcGIS queda igualmente como ultimo recurso mas abajo.
     arcgis_result = _find_best_result_arcgis(cleaned_parts)
-    if arcgis_result and not _is_approximate_result(arcgis_result):
+    if (
+        arcgis_result
+        and not _is_approximate_result(arcgis_result)
+        and _matches_house_number(arcgis_result, cleaned_parts)
+    ):
         return _build_geodata(arcgis_result)
 
     # Intento 2: Nominatim y, si la direccion lleva numero de casa, la
@@ -129,6 +136,30 @@ def _is_approximate_result(result: dict) -> bool:
     return addr_type in {"locality", "postal", "admin", "subregion", "region"}
 
 
+def _house_number_in_query(parts: list[str]) -> str:
+    """Devuelve el numero de casa pedido ("6-45"); cadena vacia si no hay."""
+    road = _normalize_road_text(parts[0]) if parts else ""
+    match = re.search(r"#\s*(\d+[a-z]?(?:\s*-\s*\d+[a-z]?)?)", road)
+    return re.sub(r"\s+", "", match.group(1)) if match else ""
+
+
+def _matches_house_number(result: dict, parts: list[str]) -> bool:
+    """True si el candidato reconoce el numero de casa que pidio el usuario.
+
+    Cuando la direccion lleva numero de casa, un resultado que solo ubica la via
+    (por ejemplo, el centro de la calle) deja la casa a cientos de metros de su
+    sitio. En ese caso conviene seguir buscando, porque otro proveedor puede
+    tener la placa exacta. Si la direccion no trae numero, todo candidato sirve.
+    """
+    house_number = _house_number_in_query(parts)
+    if not house_number:
+        return True
+
+    attributes = result.get("attributes") if isinstance(result.get("attributes"), dict) else {}
+    haystack = _normalize_text(result.get("address") or attributes.get("Match_addr") or "")
+    return house_number in re.sub(r"\s+", "", haystack)
+
+
 def _build_candidate_queries(parts: list[str]) -> list[str]:
     """Arma variantes de la consulta para dar varias oportunidades al proveedor.
 
@@ -207,6 +238,10 @@ def _normalize_text(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", str(value))
     normalized = normalized.encode("ascii", "ignore").decode("ascii")
     normalized = normalized.lower()
+    # El punto de las abreviaturas ("Cl. 14", "Cra. 6") se cambia por un espacio
+    # para que la via quede como "cl 14" y las reglas siguientes la reconozcan.
+    # Sin esto quedaba "cl. 14" y la direccion no se podia descomponer.
+    normalized = re.sub(r"\.", " ", normalized)
     normalized = re.sub(r"[;|]+", " ", normalized)
     normalized = re.sub(r"[,]+", ", ", normalized)
     normalized = re.sub(r"\s+", " ", normalized)

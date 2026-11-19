@@ -65,6 +65,7 @@ from app.services.rate_limit import (
     registrar_fallo,
 )
 from app.services.security import aplicar_recuperacion, verificar_respuesta
+from app.services.uploads import guardar_foto_vehiculo
 
 admin_bp = Blueprint("admin_bp", __name__, url_prefix="/admin")
 
@@ -523,6 +524,17 @@ def crear_conductor():
         flash("La contrasena del conductor debe tener al menos 8 caracteres.", "warning")
         return redirect(url_for("admin_bp.conductores"))
 
+    # La foto de la buseta puede venir como archivo desde el equipo del
+    # administrador o como enlace externo; el archivo tiene prioridad.
+    foto_url = request.form.get("foto_url", "").strip() or None
+    foto = request.files.get("foto")
+    if foto and foto.filename:
+        try:
+            foto_url = guardar_foto_vehiculo(foto)
+        except ValueError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("admin_bp.conductores"))
+
     estado_suscripcion = EstadoSuscripcion(request.form.get("estado_suscripcion", EstadoSuscripcion.ACTIVA.value))
     conductor = Conductor(
         nombres=request.form.get("nombres", "").strip(),
@@ -537,7 +549,7 @@ def crear_conductor():
         color_vehiculo=request.form.get("color_vehiculo", "").strip() or None,
         ciudad=request.form.get("ciudad", "").strip() or None,
         descripcion_publica=request.form.get("descripcion_publica", "").strip() or None,
-        foto_url=request.form.get("foto_url", "").strip() or None,
+        foto_url=foto_url,
         visible_en_directorio=_form_bool("visible_en_directorio"),
         activo=_form_bool("activo", default=True),
         gps_habilitado=estado_suscripcion == EstadoSuscripcion.ACTIVA,
@@ -591,7 +603,17 @@ def actualizar_conductor(conductor_id):
     conductor.color_vehiculo = request.form.get("color_vehiculo", "").strip() or None
     conductor.ciudad = request.form.get("ciudad", "").strip() or None
     conductor.descripcion_publica = request.form.get("descripcion_publica", "").strip() or None
-    conductor.foto_url = request.form.get("foto_url", "").strip() or None
+    # Si llega un archivo de imagen se reemplaza la foto; si no, se respeta el
+    # enlace escrito en el formulario.
+    foto = request.files.get("foto")
+    if foto and foto.filename:
+        try:
+            conductor.foto_url = guardar_foto_vehiculo(foto)
+        except ValueError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("admin_bp.conductores"))
+    else:
+        conductor.foto_url = request.form.get("foto_url", "").strip() or None
     conductor.visible_en_directorio = _form_bool("visible_en_directorio")
     conductor.activo = _form_bool("activo", default=True)
     if nueva_password:

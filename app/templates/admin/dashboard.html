@@ -90,7 +90,7 @@
                                 <div class="admin-form-card h-100">
                                 <h2 class="h5 mb-1">Crear conductor</h2>
                                 <p class="admin-form-card__text">Registra la persona, el vehiculo y su estado comercial.</p>
-                                <form method="post" action="{{ url_for('admin_bp.crear_conductor') }}" class="row g-3 js-school-form">
+                                <form method="post" action="{{ url_for('admin_bp.crear_conductor') }}" enctype="multipart/form-data" class="row g-3 js-school-form">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                     <div class="col-md-6"><input class="form-control" name="nombres" placeholder="Nombres" required></div>
                                     <div class="col-md-6"><input class="form-control" name="apellidos" placeholder="Apellidos" required></div>
@@ -105,6 +105,10 @@
                                     <div class="col-md-4"><input class="form-control js-city-input" name="ciudad" placeholder="Ciudad" list="municipiosCatalogo"></div>
                                     <div class="col-12"><textarea class="form-control" name="descripcion_publica" rows="2" placeholder="Descripcion para directorio"></textarea></div>
                                     <div class="col-12"><input class="form-control" name="foto_url" placeholder="URL de foto opcional"></div>
+                                    <div class="col-12">
+                                        <input class="form-control" type="file" name="foto" accept="image/png,image/jpeg,image/webp,image/gif">
+                                        <div class="form-text">Foto de la buseta desde tu equipo: JPG, PNG, WEBP o GIF.</div>
+                                    </div>
                                     <div class="col-md-6">
                                         <select class="form-select" name="estado_suscripcion">
                                             <option value="activa" selected>Suscripcion activa</option>

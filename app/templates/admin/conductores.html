@@ -14,7 +14,7 @@
             <p>Crea la cuenta del conductor, su vehiculo y su estado comercial.</p>
         </div>
     </div>
-    <form method="post" action="{{ url_for('admin_bp.crear_conductor') }}" class="row g-3 js-school-form">
+    <form method="post" action="{{ url_for('admin_bp.crear_conductor') }}" enctype="multipart/form-data" class="row g-3 js-school-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="col-md-3"><input class="form-control" name="nombres" placeholder="Nombres" required></div>
         <div class="col-md-3"><input class="form-control" name="apellidos" placeholder="Apellidos" required></div>
@@ -40,7 +40,11 @@
                 <option value="suspendida">Suscripcion suspendida</option>
             </select>
         </div>
-        <div class="col-md-3"><input class="form-control" name="foto_url" placeholder="URL de foto opcional"></div>
+        <div class="col-md-4">
+            <input class="form-control" type="file" name="foto" accept="image/png,image/jpeg,image/webp,image/gif">
+            <div class="form-text">Foto de la buseta desde tu equipo: JPG, PNG, WEBP o GIF.</div>
+        </div>
+        <div class="col-md-3"><input class="form-control" name="foto_url" placeholder="o pega un enlace (https://...)"></div>
         <div class="col-12"><textarea class="form-control" name="descripcion_publica" rows="2" placeholder="Descripcion para el directorio"></textarea></div>
         <div class="col-md-6 d-flex flex-wrap gap-3 align-items-center">
             <div class="form-check">
@@ -118,7 +122,7 @@
 
             <details class="mt-3">
                 <summary class="small fw-semibold text-primary" style="cursor: pointer;">Editar datos del conductor</summary>
-                <form method="post" action="{{ url_for('admin_bp.actualizar_conductor', conductor_id=conductor.id) }}" class="row g-3 mt-2 js-school-form">
+                <form method="post" action="{{ url_for('admin_bp.actualizar_conductor', conductor_id=conductor.id) }}" enctype="multipart/form-data" class="row g-3 mt-2 js-school-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <div class="col-md-3"><input class="form-control" name="nombres" value="{{ conductor.nombres }}" placeholder="Nombres" required></div>
                     <div class="col-md-3"><input class="form-control" name="apellidos" value="{{ conductor.apellidos }}" placeholder="Apellidos" required></div>
@@ -135,7 +139,11 @@
                     <div class="col-md-2"><input class="form-control" type="number" min="1" name="capacidad_vehiculo" value="{{ conductor.capacidad_vehiculo or '' }}" placeholder="Capacidad"></div>
                     <div class="col-md-2"><input class="form-control" name="color_vehiculo" value="{{ conductor.color_vehiculo or '' }}" placeholder="Color"></div>
                     <div class="col-md-2"><input class="form-control js-city-input" name="ciudad" value="{{ conductor.ciudad or '' }}" placeholder="Ciudad" list="municipiosCatalogo"></div>
-                    <div class="col-12"><input class="form-control" name="foto_url" value="{{ conductor.foto_url or '' }}" placeholder="URL de foto"></div>
+                    <div class="col-md-6">
+                        <input class="form-control" type="file" name="foto" accept="image/png,image/jpeg,image/webp,image/gif">
+                        <div class="form-text">Sube una foto nueva desde tu equipo para reemplazar la actual.</div>
+                    </div>
+                    <div class="col-md-6"><input class="form-control" name="foto_url" value="{{ conductor.foto_url or '' }}" placeholder="o pega un enlace (https://...)"></div>
                     <div class="col-12"><textarea class="form-control" name="descripcion_publica" rows="2" placeholder="Descripcion">{{ conductor.descripcion_publica or '' }}</textarea></div>
                     <div class="col-md-6 d-flex flex-wrap gap-3 align-items-center">
                         <div class="form-check">

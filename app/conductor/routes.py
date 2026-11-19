@@ -6,16 +6,14 @@ los estudiantes, el chat de la ruta y los avisos en tiempo real (SocketIO)
 que reciben las familias.
 """
 from datetime import date, datetime
-from pathlib import Path
-from uuid import uuid4
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import check_password_hash, generate_password_hash
-from werkzeug.utils import secure_filename
 from app import db, socketio
 from app.models import Asistencia, Conductor, Estudiante, MensajeChat, Ruta
 from app.services.geocoding import geocode_colombia_address
 from app.services.school_catalog import get_municipalities, load_school_catalog
+from app.services.uploads import guardar_foto_vehiculo
 from app.services.rate_limit import (
     BLOQUEO_ACCESO_SEGUNDOS,
     MAX_FALLOS_ACCESO,
@@ -346,7 +344,7 @@ def actualizar_perfil():
     foto = request.files.get("foto")
     if foto and foto.filename:
         try:
-            conductor.foto_url = _guardar_foto_buseta(foto)
+            conductor.foto_url = guardar_foto_vehiculo(foto)
         except ValueError as error:
             flash(str(error), "warning")
             return redirect(url_for("conductor_bp.dashboard", ruta_id=ruta_id))
@@ -586,22 +584,6 @@ def _form_bool(field_name, default=False):
     if raw_value is None:
         return default
     return str(raw_value).strip().lower() in {"1", "true", "on", "yes", "si"}
-
-
-def _guardar_foto_buseta(archivo):
-    """Guarda la foto de la buseta en static/uploads y devuelve su ruta publica."""
-    # Sanitiza el nombre y comprueba que la extension sea una imagen permitida.
-    nombre_original = secure_filename(archivo.filename)
-    extension = nombre_original.rsplit(".", 1)[-1].lower() if "." in nombre_original else ""
-    if extension not in current_app.config["ALLOWED_IMAGE_EXTENSIONS"]:
-        raise ValueError("La foto de la buseta debe ser una imagen (jpg, png, webp o gif).")
-
-    # Genera un nombre unico (uuid) para no pisar fotos anteriores.
-    carpeta = Path(current_app.config["UPLOAD_FOLDER"])
-    carpeta.mkdir(parents=True, exist_ok=True)
-    nombre_archivo = f"buseta-{uuid4().hex}.{extension}"
-    archivo.save(carpeta / nombre_archivo)
-    return url_for("static", filename=f"uploads/{nombre_archivo}")
 
 
 def _resolve_school_form_value(field_name):
