@@ -111,14 +111,22 @@
     .driver-map-caption span { color: var(--driver-muted); display: block; font-size: .64rem; margin-top: .1rem; }
 
     /* Velocimetro flotante: arriba-izquierda, debajo del boton "Centrar punto"
-       (que es pequeno y solo ocupa la primera fila). Asi evita chocar con la
-       atribucion de Leaflet abajo-derecha ni con los controles de capas/zoom
-       de arriba-derecha. En pantalla completa va a abajo-izquierda. */
+       (que es pequeno y solo ocupa la primera fila). En pantalla completa va a
+       abajo-izquierda (la lista de paradas esta a la derecha). */
     .driver-speed-pill { align-items: center; background: rgba(16,33,43,.92); border-radius: 12px; box-shadow: 0 5px 16px rgba(0,0,0,.18); color: #fff; display: inline-flex; gap: .5rem; top: 4.5rem; left: 1rem; padding: .5rem .72rem; position: absolute; z-index: 460; }
     .driver-speed-pill i { color: var(--driver-accent); font-size: 1rem; }
     .driver-speed-value { font-size: 1.5rem; font-weight: 800; line-height: 1; min-width: 2.6ch; text-align: right; }
     .driver-speed-unit { color: rgba(255,255,255,.72); font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .driver-map-card.is-expanded .driver-speed-pill { top: auto; bottom: 1rem; left: 1rem; }
+
+    /* Mantiene los creditos del proveedor dentro del mapa sin tapar el recorrido. */
+    .driver-map .leaflet-control-attribution {
+        background: rgba(255,255,255,.82);
+        border-radius: 5px 0 0 0;
+        line-height: 1.2;
+        padding: 2px 5px;
+        text-align: right;
+    }
 
     /* Modo ampliado: mapa a pantalla completa con guia tipo Android Auto. */
     .driver-map-stage { position: relative; }
@@ -266,6 +274,12 @@
         .driver-hud-next strong { font-size: .96rem; }
         .driver-hud-next-meta { font-size: .7rem; margin-left: 0; max-width: 100%; white-space: normal; }
         .driver-map-card.is-expanded .driver-hud-stops { display: none; }
+        /* Reduce elementos flotantes; la velocidad GPS sigue transmitiendose. */
+        .driver-speed-pill { display: none; }
+        .driver-map .leaflet-control-attribution {
+            font-size: .5rem !important;
+            max-width: min(88vw, 420px);
+        }
     }
     /* Horizontal en telefono o tablet: el mapa gana ancho y no queda mas alto que la pantalla. */
     @media (orientation: landscape) and (max-width: 1199.98px) {
