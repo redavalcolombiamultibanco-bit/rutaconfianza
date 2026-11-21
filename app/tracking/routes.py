@@ -62,7 +62,9 @@ def ingreso():
 
         # Limpia cualquier ruta previa antes de validar el nuevo PIN.
         session.pop("tracking_ruta_id", None)
-        pin = request.form.get("pin", "").strip()
+        # El PIN se guarda en mayusculas: se convierte lo que escriba la familia
+        # para que no falle si lo digita en minusculas.
+        pin = request.form.get("pin", "").strip().upper()
         # El PIN es la unica credencial: debe coincidir con una ruta activa.
         ruta = Ruta.query.filter_by(pin_acceso=pin, activa=True).first()
         if ruta:
